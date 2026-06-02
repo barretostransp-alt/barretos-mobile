@@ -937,6 +937,28 @@
 .refazer-badge.green{background:rgba(46,189,133,.15);color:#2EBD85;border-color:rgba(46,189,133,.3);}
 .refazer-badge.red{background:rgba(226,75,74,.15);color:#E24B4A;border-color:rgba(226,75,74,.3);}
 .refazer-error{color:#E24B4A;font-size:11px;margin-top:6px;display:none;}
+
+/* ── MOBILE RESPONSIVO (adicionado para versão mobile) ── */
+@media (max-width: 480px) {
+  :root { font-size: 14px; }
+  .app-topbar { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .app-topbar .tabs { overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
+  .app-topbar .tabs::-webkit-scrollbar { display: none; }
+  .app-body { grid-template-columns: 1fr !important; gap: 0; padding: 0; }
+  .panel-form { padding: 12px; border-radius: 0; border: none; border-bottom: 1px solid var(--border-color); }
+  .panel-result { min-height: 200px; padding: 12px; border-radius: 0; }
+  .form-row, .form-group { margin-bottom: 10px; }
+  .form-row.two-col { grid-template-columns: 1fr !important; }
+  .result-card { padding: 12px; }
+  .result-total { font-size: 28px; }
+  .btn { padding: 12px 16px; font-size: 14px; width: 100%; margin-bottom: 6px; }
+  .btn-row { flex-direction: column; }
+  .tab-content { overflow-y: auto; }
+  input, select, textarea { font-size: 16px !important; } /* Prevents zoom on iOS */
+  .history-table { font-size: 11px; }
+  .panel-form h2, .panel-result h2 { font-size: 14px; }
+  .app-body.two-panel { display: flex !important; flex-direction: column !important; }
+}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
