@@ -346,7 +346,56 @@ function paintCardsOnly(key) {
   }
 }
 
-function abrirNovo() {
+/* ── Geração e validação do DT CODIGO ── */
+
+function gerarProximoCodigo(tabKey) {
+  var aba  = ABAS_CONFIG.find(function(a) { return a.key === tabKey; });
+  var pfx  = aba ? aba.pfx : 'X';
+  var now  = new Date();
+  var ano  = String(now.getFullYear()).slice(-2);          // "26"
+  var mes  = String(now.getMonth() + 1).padStart(2, '0'); // "06"
+  var prefixoMes = pfx + ano + mes;                       // ex: "S2606"
+
+  // Pega todos os cards desta aba e filtra os do mês atual
+  var cards = rawCards[tabKey] || [];
+  var numeros = cards
+    .map(function(c) { return (c['DT CODIGO'] || '').toUpperCase(); })
+    .filter(function(cod) { return cod.startsWith(prefixoMes); })
+    .map(function(cod) {
+      var seq = parseInt(cod.slice(prefixoMes.length), 10);
+      return isNaN(seq) ? 0 : seq;
+    });
+
+  var proximo = numeros.length > 0 ? Math.max.apply(null, numeros) + 1 : 1;
+  return prefixoMes + String(proximo).padStart(2, '0'); // ex: "S260601"
+}
+
+function verificarDuplicidade(codigo, codigoOriginal) {
+  var alert = document.getElementById('dt-alert');
+  var input = document.getElementById('cf-DT CODIGO');
+  if (!alert || !input) return;
+  if (!codigo || codigo === codigoOriginal) {
+    alert.style.display = 'none';
+    input.style.borderColor = '';
+    return;
+  }
+  // Verifica em todos os kanbans carregados
+  var existe = false;
+  Object.keys(rawCards).forEach(function(k) {
+    (rawCards[k] || []).forEach(function(c) {
+      if ((c['DT CODIGO']||'').toUpperCase() === codigo.toUpperCase()) existe = true;
+    });
+  });
+  if (existe) {
+    alert.style.display = 'flex';
+    input.style.borderColor = '#EF4444';
+  } else {
+    alert.style.display = 'none';
+    input.style.borderColor = 'var(--green)';
+  }
+}
+
+
   editCard = null;
   document.getElementById('modal-title').textContent = 'Novo Card';
   document.getElementById('btn-del').style.display = 'none';
@@ -365,26 +414,45 @@ function abrirEdicao(card, key) {
 function renderModalBody(data) {
   var body = document.getElementById('modal-body'); body.innerHTML = '';
 
-  // ── DT CODIGO: gerado automaticamente ou exibido se existente ──
+  // ── DT CODIGO ──
   var dtDiv = document.createElement('div'); dtDiv.className = 'mfield';
-  var dtLbl = document.createElement('label'); dtLbl.textContent = 'DT CODIGO (gerado automaticamente)';
-  var dtVal = document.createElement('div');
-  dtVal.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13px;color:var(--gold);font-weight:700;letter-spacing:.05em;';
+  var dtLbl = document.createElement('label');
+  dtLbl.textContent = 'DT CODIGO';
+  dtDiv.appendChild(dtLbl);
+
   var codigoAtual = data['DT CODIGO'] || '';
+
   if (!codigoAtual && !editCard) {
-    // Gera novo código: prefixo da aba + timestamp
-    var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
-    var pfx = aba ? aba.pfx : 'X';
-    var ts  = Date.now().toString().slice(-6);
-    codigoAtual = pfx + ts;
+    codigoAtual = gerarProximoCodigo(currentTab);
   }
-  dtVal.textContent = codigoAtual || '—';
-  dtVal.id = 'cf-DT CODIGO-display';
-  // Campo hidden para gravar o valor
-  var dtHidden = document.createElement('input');
-  dtHidden.type = 'hidden'; dtHidden.id = 'cf-DT CODIGO'; dtHidden.value = codigoAtual;
-  dtDiv.appendChild(dtLbl); dtDiv.appendChild(dtVal); dtDiv.appendChild(dtHidden);
+
+  // Input editável (não hidden) — usuário pode ajustar se necessário
+  var dtInput = document.createElement('input');
+  dtInput.type = 'text';
+  dtInput.id = 'cf-DT CODIGO';
+  dtInput.value = codigoAtual;
+  dtInput.style.cssText = 'font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-size:15px;';
+  dtInput.setAttribute('autocomplete','off');
+  dtInput.setAttribute('maxlength','8');
+
+  // Alerta de duplicidade
+  var dtAlert = document.createElement('div');
+  dtAlert.id = 'dt-alert';
+  dtAlert.style.cssText = 'display:none;margin-top:5px;font-size:11px;font-weight:700;color:#EF4444;display:flex;align-items:center;gap:5px;';
+  dtAlert.innerHTML = '<i class="ti ti-alert-triangle" style="font-size:13px"></i> CÓDIGO JÁ USADO — altere antes de salvar';
+
+  dtInput.addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+    verificarDuplicidade(this.value, data['DT CODIGO'] || '');
+  });
+
+  dtDiv.appendChild(dtInput);
+  dtDiv.appendChild(dtAlert);
   body.appendChild(dtDiv);
+
+  // Verifica imediatamente se o código gerado já existe
+  if (!editCard) verificarDuplicidade(codigoAtual, '');
+
 
   // ── Demais campos agrupados por seção ──
   var currentSection = '';
@@ -441,6 +509,13 @@ function fecharModal() {
 }
 
 async function salvarCard() {
+  // Bloqueia se código duplicado
+  var dtAlert = document.getElementById('dt-alert');
+  if (dtAlert && dtAlert.style.display === 'flex') {
+    alert('⚠ CÓDIGO JÁ USADO — altere o DT CODIGO antes de salvar.');
+    return;
+  }
+
   var btn = document.getElementById('btn-save');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px"></span>Salvando…';
