@@ -937,28 +937,6 @@
 .refazer-badge.green{background:rgba(46,189,133,.15);color:#2EBD85;border-color:rgba(46,189,133,.3);}
 .refazer-badge.red{background:rgba(226,75,74,.15);color:#E24B4A;border-color:rgba(226,75,74,.3);}
 .refazer-error{color:#E24B4A;font-size:11px;margin-top:6px;display:none;}
-
-/* ── MOBILE RESPONSIVO (adicionado para versão mobile) ── */
-@media (max-width: 480px) {
-  :root { font-size: 14px; }
-  .app-topbar { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
-  .app-topbar .tabs { overflow-x: auto; scrollbar-width: none; white-space: nowrap; }
-  .app-topbar .tabs::-webkit-scrollbar { display: none; }
-  .app-body { grid-template-columns: 1fr !important; gap: 0; padding: 0; }
-  .panel-form { padding: 12px; border-radius: 0; border: none; border-bottom: 1px solid var(--border-color); }
-  .panel-result { min-height: 200px; padding: 12px; border-radius: 0; }
-  .form-row, .form-group { margin-bottom: 10px; }
-  .form-row.two-col { grid-template-columns: 1fr !important; }
-  .result-card { padding: 12px; }
-  .result-total { font-size: 28px; }
-  .btn { padding: 12px 16px; font-size: 14px; width: 100%; margin-bottom: 6px; }
-  .btn-row { flex-direction: column; }
-  .tab-content { overflow-y: auto; }
-  input, select, textarea { font-size: 16px !important; } /* Prevents zoom on iOS */
-  .history-table { font-size: 11px; }
-  .panel-form h2, .panel-result h2 { font-size: 14px; }
-  .app-body.two-panel { display: flex !important; flex-direction: column !important; }
-}
 </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
@@ -969,6 +947,183 @@
   color:#EF4444;border-radius:6px;padding:7px 10px;cursor:pointer;font-size:13px;
   flex-shrink:0;display:flex;align-items:center;transition:all .15s;}
 .placa-remove:hover{background:rgba(239,68,68,.25);}
+</style>
+
+<!-- ============================================================
+     RESPONSIVIDADE MOBILE — garante que tudo cabe em ~390px
+     sem scroll horizontal, eliminando o squeeze do iframe
+     ============================================================ -->
+<style>
+@media (max-width: 768px) {
+
+  /* Layout: empilha o form acima do resultado */
+  .app-body {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Painel do formulário: sem borda direita, scroll livre */
+  .panel-form {
+    border-right: none !important;
+    height: auto !important;
+    overflow-y: visible !important;
+    padding: 16px 14px !important;
+  }
+
+  /* Painel de resultado: altura automática */
+  .panel-result {
+    height: auto !important;
+    overflow-y: visible !important;
+    padding: 16px 14px !important;
+  }
+
+  /* Header: compacto e sem overflow */
+  .app-header {
+    padding: 0 14px !important;
+    height: auto !important;
+    min-height: 56px !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+
+  /* Esconde tabs e botão Sheets no mobile — não são usados no iframe */
+  .nav-tabs,
+  .btn-config,
+  .header-divider {
+    display: none !important;
+  }
+
+  /* Logo menor */
+  .logo-img {
+    height: 32px !important;
+  }
+
+  /* ANTT pill menor */
+  .antt-pill {
+    font-size: 9px !important;
+    padding: 2px 8px !important;
+  }
+
+  /* Título menor */
+  .header-title {
+    font-size: 14px !important;
+  }
+  .header-sub {
+    font-size: 9px !important;
+  }
+
+  /* Grids: 1 coluna no mobile */
+  .field-grid,
+  .field-grid-3,
+  .override-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Inputs e selects: tamanho confortável para toque */
+  select,
+  input[type=number],
+  input[type=text],
+  textarea {
+    font-size: 16px !important; /* evita zoom automático iOS */
+    padding: 10px 10px !important;
+  }
+
+  /* Toggle modalidade */
+  .toggle-btn {
+    padding: 10px 8px !important;
+    font-size: 13px !important;
+  }
+
+  /* Result total — número grande mas cabe na tela */
+  .result-total-val {
+    font-size: 26px !important;
+  }
+
+  /* Botão PDF: largura total */
+  #btn-pdf {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 12px !important;
+    font-size: 14px !important;
+    margin-bottom: 8px !important;
+  }
+
+  /* Result header: empilha */
+  .result-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Tabela cubagem: scroll horizontal se necessário */
+  .cub-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Addr-dropdown: garante que não sai da tela */
+  .addr-dropdown {
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* Warn footer */
+  .warn-footer {
+    font-size: 10px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Override body */
+  .override-body {
+    padding: 10px 12px !important;
+  }
+
+  /* Modal */
+  .modal-box {
+    max-height: 90vh !important;
+    padding: 16px !important;
+  }
+
+  /* Refazer panel */
+  .refazer-row {
+    flex-wrap: wrap !important;
+  }
+  .btn-refazer-load {
+    flex: 1 !important;
+    min-width: 90px !important;
+    justify-content: center !important;
+  }
+
+  /* Resultado total: card empilhado */
+  .result-total-card {
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 16px !important;
+    align-items: flex-start !important;
+  }
+
+  /* Views de histórico e OC: padding adequado */
+  .hist-view,
+  .oc-view {
+    padding: 14px !important;
+    height: auto !important;
+  }
+
+  /* OC grid */
+  .oc-grid,
+  .oc-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Scrollbar da area de cartas — body do iframe deve rolar */
+  body {
+    overflow-y: auto !important;
+    min-height: 100dvh !important;
+  }
+}
 </style>
 </head>
 <body>
