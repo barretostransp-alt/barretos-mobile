@@ -352,14 +352,21 @@ function gerarProximoCodigo(tabKey) {
   var aba  = ABAS_CONFIG.find(function(a) { return a.key === tabKey; });
   var pfx  = aba ? aba.pfx : 'X';
   var now  = new Date();
-  var ano  = String(now.getFullYear()).slice(-2);          // "26"
-  var mes  = String(now.getMonth() + 1).padStart(2, '0'); // "06"
-  var prefixoMes = pfx + ano + mes;                       // ex: "S2606"
+  var ano  = String(now.getFullYear()).slice(-2);           // "26"
+  var mes  = String(now.getMonth() + 1).padStart(2, '0');  // "06"
+  var prefixoMes = pfx + ano + mes;                        // ex: "S2606"
 
-  // Pega todos os cards desta aba e filtra os do mês atual
-  var cards = rawCards[tabKey] || [];
-  var numeros = cards
-    .map(function(c) { return (c['DT CODIGO'] || '').toUpperCase(); })
+  // Pega TODOS os cards de TODAS as abas carregadas para garantir unicidade global
+  var todosCodigos = [];
+  Object.keys(rawCards).forEach(function(k) {
+    (rawCards[k] || []).forEach(function(c) {
+      var cod = (c['DT CODIGO'] || '').toUpperCase().trim();
+      if (cod) todosCodigos.push(cod);
+    });
+  });
+
+  // Filtra apenas os que têm o prefixo do mês atual (ex: "S2606")
+  var numeros = todosCodigos
     .filter(function(cod) { return cod.startsWith(prefixoMes); })
     .map(function(cod) {
       var seq = parseInt(cod.slice(prefixoMes.length), 10);
@@ -367,7 +374,15 @@ function gerarProximoCodigo(tabKey) {
     });
 
   var proximo = numeros.length > 0 ? Math.max.apply(null, numeros) + 1 : 1;
-  return prefixoMes + String(proximo).padStart(2, '0'); // ex: "S260601"
+  var candidato = prefixoMes + String(proximo).padStart(2, '0');
+
+  // Garante que o candidato não existe em nenhuma aba (evita colisão)
+  while (todosCodigos.indexOf(candidato) !== -1) {
+    proximo++;
+    candidato = prefixoMes + String(proximo).padStart(2, '0');
+  }
+
+  return candidato;
 }
 
 function verificarDuplicidade(codigo, codigoOriginal) {
@@ -399,6 +414,26 @@ function abrirNovo() {
   editCard = null;
   document.getElementById('modal-title').textContent = 'Novo Card';
   document.getElementById('btn-del').style.display = 'none';
+
+  // Se ainda não carregou os cards da aba atual, carrega antes de abrir
+  if (!rawCards[currentTab]) {
+    var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
+    if (aba) {
+      fetch(URL_KANBANS + '?aba=' + encodeURIComponent(aba.aba))
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          if (j.success) rawCards[currentTab] = j.rows || [];
+          renderModalBody({});
+          document.getElementById('modal-card').classList.add('open');
+        })
+        .catch(function() {
+          renderModalBody({});
+          document.getElementById('modal-card').classList.add('open');
+        });
+      return;
+    }
+  }
+
   renderModalBody({});
   document.getElementById('modal-card').classList.add('open');
 }
