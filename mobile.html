@@ -26,7 +26,6 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
   padding:4px 10px;border-radius:20px;border:1px solid var(--gold-b);white-space:nowrap;}
 .btn-icon{background:none;border:none;color:var(--txt-dim);cursor:pointer;font-size:20px;padding:4px;}
 .content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
-.content.cotacao-mode{overflow:auto;}
 .bottom-nav{background:var(--surface);border-top:1px solid var(--border);
   display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0);}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;
@@ -137,7 +136,41 @@ var URL_USUARIOS = 'https://script.google.com/macros/s/AKfycbyYMOKvOInjNNHjQGlW5
 var URL_KANBANS  = 'https://script.google.com/macros/s/AKfycbwkX0XLYMnWIKa9SsS1oSv9E2hhGYjKi5Fp2cPHA_J_X1jg7NiGVT4YfdFAjZ3Ps2C4Qg/exec';
 var ABAS_CONFIG  = [{"key": "kanban_pin", "aba": "PINHEIRO", "pfx": "P", "label": "Pinheiro", "color": "#F97316"}, {"key": "kanban_inf", "aba": "INFRA", "pfx": "S", "label": "Infra", "color": "#14B8A6"}, {"key": "kanban_bar", "aba": "BARRETO'S", "pfx": "B", "label": "Barreto's", "color": "#F5B800"}, {"key": "kanban_gon", "aba": "GONCALVES", "pfx": "G", "label": "Gonçalves", "color": "#3B82F6"}];
 var COLUNAS_STATUS = ["OPERACIONAL", "COLETA", "AGUARDANDO MANIFESTO", "FATURADO", "MANIFESTOS", "FINALIZADO"];
-var CAMPOS_CARD  = [{"key": "Status", "label": "Status", "type": "select"}, {"key": "VENDEDOR", "label": "Vendedor", "type": "text"}, {"key": "CLIENTE", "label": "Cliente", "type": "text"}, {"key": "CNPJ TOMADOR", "label": "CNPJ Tomador", "type": "text"}, {"key": "CONTATO CLIENTE", "label": "Contato Cliente", "type": "text"}, {"key": "DATA DA COLETA", "label": "Data da Coleta", "type": "date"}, {"key": "PREVISAO DA ENTREGA", "label": "Previsão de Entrega", "type": "date"}, {"key": "CIDADE ORIGEM", "label": "Cidade Origem", "type": "text"}, {"key": "UF ORIGEM", "label": "UF Origem", "type": "text"}, {"key": "CIDADE DESTINO", "label": "Cidade Destino", "type": "text"}, {"key": "UF DESTINO", "label": "UF Destino", "type": "text"}, {"key": "TIPO DE VEICULO", "label": "Tipo de Veículo", "type": "text"}, {"key": "MOTORISTA", "label": "Motorista", "type": "text"}, {"key": "TELEFONE MOTORISTA", "label": "Tel. Motorista", "type": "tel"}, {"key": "FRETE CLIENTE", "label": "Frete Cliente (R$)", "type": "text"}, {"key": "FRETE MOTORISTA", "label": "Frete Motorista (R$)", "type": "text"}, {"key": "ADIANTAMENTO", "label": "Adiantamento (R$)", "type": "text"}, {"key": "GERENCIAMENTO", "label": "Gerenciamento", "type": "text"}, {"key": "CTE", "label": "CTE", "type": "text"}, {"key": "NF", "label": "NF", "type": "text"}, {"key": "OBSERVACAO", "label": "Observação", "type": "textarea"}];
+var CAMPOS_CARD  = [
+  /* ── Identificação ── */
+  {"key": "Resumo",             "label": "Título / Resumo da Operação",  "type": "text",     "section": "Identificação"},
+  {"key": "Status",             "label": "Status",                        "type": "select",   "section": "Identificação"},
+  /* ── Operação ── */
+  {"key": "VENDEDOR",           "label": "Vendedor",                      "type": "text",     "section": "Operação"},
+  {"key": "CLIENTE",            "label": "Cliente",                       "type": "text",     "section": "Operação"},
+  {"key": "CNPJ TOMADOR",       "label": "CNPJ Tomador",                  "type": "text",     "section": "Operação"},
+  {"key": "CONTATO CLIENTE",    "label": "Contato Cliente",               "type": "text",     "section": "Operação"},
+  {"key": "DATA DA COLETA",     "label": "Data da Coleta",                "type": "date",     "section": "Operação"},
+  {"key": "PREVISAO DA ENTREGA","label": "Previsão de Entrega",           "type": "date",     "section": "Operação"},
+  /* ── Rota ── */
+  {"key": "CIDADE ORIGEM",      "label": "Cidade Origem",                 "type": "text",     "section": "Rota"},
+  {"key": "UF ORIGEM",          "label": "UF Origem",                     "type": "text",     "section": "Rota"},
+  {"key": "CIDADE DESTINO",     "label": "Cidade Destino",                "type": "text",     "section": "Rota"},
+  {"key": "UF DESTINO",         "label": "UF Destino",                    "type": "text",     "section": "Rota"},
+  /* ── Transporte ── */
+  {"key": "TIPO DE VEICULO",    "label": "Tipo de Veículo",               "type": "text",     "section": "Transporte"},
+  {"key": "MOTORISTA",          "label": "Motorista",                     "type": "text",     "section": "Transporte"},
+  {"key": "TELEFONE MOTORISTA", "label": "Tel. Motorista",                "type": "tel",      "section": "Transporte"},
+  /* ── Financeiro ── */
+  {"key": "FRETE CLIENTE",      "label": "Frete Cliente (R$)",            "type": "text",     "section": "Financeiro"},
+  {"key": "FRETE MOTORISTA",    "label": "Frete Motorista (R$)",          "type": "text",     "section": "Financeiro"},
+  {"key": "ADIANTAMENTO",       "label": "Adiantamento (R$)",             "type": "text",     "section": "Financeiro"},
+  {"key": "GERENCIAMENTO",      "label": "Gerenciamento",                 "type": "text",     "section": "Financeiro"},
+  {"key": "CTE",                "label": "CTE",                           "type": "text",     "section": "Financeiro"},
+  {"key": "NF",                 "label": "NF",                            "type": "text",     "section": "Financeiro"},
+  /* ── Pagamento ── */
+  {"key": "TITULAR",            "label": "Titular da Conta",              "type": "text",     "section": "Pagamento"},
+  {"key": "TIPO CHAVE PIX",     "label": "Tipo de Chave PIX",             "type": "select-pix","section": "Pagamento"},
+  {"key": "CHAVE PIX",          "label": "Chave PIX",                     "type": "text",     "section": "Pagamento"},
+  {"key": "BANCO",              "label": "Banco",                         "type": "text",     "section": "Pagamento"},
+  /* ── Obs ── */
+  {"key": "OBSERVACAO",         "label": "Observação",                    "type": "textarea", "section": "Obs"}
+];
 
 var currentTab = null, currentCol = COLUNAS_STATUS[0];
 var rawCards = {}, editCard = null, user = null;
@@ -194,17 +227,14 @@ function switchTab(key) {
     document.documentElement.style.setProperty('--accent', aba.color);
     document.getElementById('top-title').textContent = aba.label;
     document.getElementById('fab').style.display = 'flex';
-    document.getElementById('content').classList.remove('cotacao-mode');
     renderKanban(key);
   } else if (key === 'cotacao') {
     document.documentElement.style.setProperty('--accent', '#F5B800');
     document.getElementById('top-title').textContent = 'Cotação Comercial';
     document.getElementById('top-sub').textContent = 'simulação de frete';
     document.getElementById('fab').style.display = 'none';
-    var contentEl = document.getElementById('content');
-    contentEl.classList.add('cotacao-mode');
-    contentEl.innerHTML =
-      '<iframe src="cotacao_comercial.html" id="cotacao-iframe" style="width:100%;border:none;flex:1;height:100%;min-width:0;" allow="clipboard-write"></iframe>';
+    document.getElementById('content').innerHTML =
+      '<iframe src="cotacao_comercial.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write"></iframe>';
   }
 }
 
@@ -232,6 +262,40 @@ async function renderKanban(key) {
 function paintKanban(key) {
   if (currentTab !== key) return;
   var aba = ABAS_CONFIG.find(function(a) { return a.key === key; });
+  var content = document.getElementById('content');
+  content.innerHTML = '';
+
+  // Search bar — criado UMA VEZ, nunca re-criado
+  var sb = document.createElement('div'); sb.className = 'search-bar';
+  var si = document.createElement('i'); si.className = 'ti ti-search';
+  var sinp = document.createElement('input');
+  sinp.id = 'search-input';
+  sinp.placeholder = 'Buscar código, cliente...';
+  sinp.value = searchTerm;
+  sinp.setAttribute('autocomplete','off');
+  sinp.addEventListener('input', function() {
+    searchTerm = this.value;
+    paintCardsOnly(key);  // atualiza cards/abas SEM destruir o input
+  });
+  sb.appendChild(si); sb.appendChild(sinp);
+  content.appendChild(sb);
+
+  // Column tabs container
+  var ct = document.createElement('div'); ct.className = 'col-tabs'; ct.id = 'col-tabs';
+  content.appendChild(ct);
+
+  // Cards area container
+  var area = document.createElement('div'); area.className = 'cards-area'; area.id = 'cards-area';
+  content.appendChild(area);
+
+  // Preenche abas + cards
+  paintCardsOnly(key);
+}
+
+/* Atualiza abas e cards sem recriar o input de busca */
+function paintCardsOnly(key) {
+  if (currentTab !== key) return;
+  var aba = ABAS_CONFIG.find(function(a) { return a.key === key; });
   var cards = (rawCards[key] || []).filter(function(c) {
     if (!searchTerm) return true;
     var s = searchTerm.toLowerCase();
@@ -241,33 +305,25 @@ function paintKanban(key) {
       || (c['MOTORISTA']||'').toLowerCase().includes(s);
   });
   var colCards = cards.filter(function(c) { return (c['Status']||'') === currentCol; });
-  var content = document.getElementById('content');
-  content.innerHTML = '';
 
-  // Search bar
-  var sb = document.createElement('div'); sb.className = 'search-bar';
-  var si = document.createElement('i'); si.className = 'ti ti-search';
-  var sinp = document.createElement('input');
-  sinp.placeholder = 'Buscar código, cliente...';
-  sinp.value = searchTerm;
-  sinp.oninput = function() { searchTerm = this.value; paintKanban(key); };
-  sb.appendChild(si); sb.appendChild(sinp);
-  content.appendChild(sb);
+  // Atualiza abas
+  var ct = document.getElementById('col-tabs');
+  if (ct) {
+    ct.innerHTML = '';
+    COLUNAS_STATUS.forEach(function(col) {
+      var cnt = cards.filter(function(c) { return (c['Status']||'') === col; }).length;
+      var t = document.createElement('button');
+      t.className = 'col-tab' + (col === currentCol ? ' active' : '');
+      t.textContent = col + (cnt > 0 ? ' (' + cnt + ')' : '');
+      t.onclick = function() { currentCol = col; paintCardsOnly(key); };
+      ct.appendChild(t);
+    });
+  }
 
-  // Column tabs
-  var ct = document.createElement('div'); ct.className = 'col-tabs';
-  COLUNAS_STATUS.forEach(function(col) {
-    var cnt = cards.filter(function(c) { return (c['Status']||'') === col; }).length;
-    var t = document.createElement('button');
-    t.className = 'col-tab' + (col === currentCol ? ' active' : '');
-    t.textContent = col + (cnt > 0 ? ' (' + cnt + ')' : '');
-    t.onclick = function() { currentCol = col; paintKanban(key); };
-    ct.appendChild(t);
-  });
-  content.appendChild(ct);
-
-  // Cards
-  var area = document.createElement('div'); area.className = 'cards-area';
+  // Atualiza cards
+  var area = document.getElementById('cards-area');
+  if (!area) return;
+  area.innerHTML = '';
   if (colCards.length === 0) {
     area.innerHTML = '<div class="empty-state"><i class="ti ti-clipboard-off"></i><p>Nenhum card em<br><b>' + escHtml(currentCol) + '</b></p></div>';
   } else {
@@ -288,7 +344,6 @@ function paintKanban(key) {
       area.appendChild(div);
     });
   }
-  content.appendChild(area);
 }
 
 function abrirNovo() {
@@ -309,16 +364,58 @@ function abrirEdicao(card, key) {
 
 function renderModalBody(data) {
   var body = document.getElementById('modal-body'); body.innerHTML = '';
+
+  // ── DT CODIGO: gerado automaticamente ou exibido se existente ──
+  var dtDiv = document.createElement('div'); dtDiv.className = 'mfield';
+  var dtLbl = document.createElement('label'); dtLbl.textContent = 'DT CODIGO (gerado automaticamente)';
+  var dtVal = document.createElement('div');
+  dtVal.style.cssText = 'background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:13px;color:var(--gold);font-weight:700;letter-spacing:.05em;';
+  var codigoAtual = data['DT CODIGO'] || '';
+  if (!codigoAtual && !editCard) {
+    // Gera novo código: prefixo da aba + timestamp
+    var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
+    var pfx = aba ? aba.pfx : 'X';
+    var ts  = Date.now().toString().slice(-6);
+    codigoAtual = pfx + ts;
+  }
+  dtVal.textContent = codigoAtual || '—';
+  dtVal.id = 'cf-DT CODIGO-display';
+  // Campo hidden para gravar o valor
+  var dtHidden = document.createElement('input');
+  dtHidden.type = 'hidden'; dtHidden.id = 'cf-DT CODIGO'; dtHidden.value = codigoAtual;
+  dtDiv.appendChild(dtLbl); dtDiv.appendChild(dtVal); dtDiv.appendChild(dtHidden);
+  body.appendChild(dtDiv);
+
+  // ── Demais campos agrupados por seção ──
+  var currentSection = '';
   CAMPOS_CARD.forEach(function(f) {
+    // Separador de seção
+    if (f.section && f.section !== currentSection) {
+      currentSection = f.section;
+      var sep = document.createElement('div');
+      sep.style.cssText = 'margin:16px 0 8px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px;';
+      sep.innerHTML = '<i class="ti ti-' + sectionIcon(f.section) + '" style="font-size:12px"></i>' + f.section
+        + '<span style="flex:1;height:1px;background:var(--border);margin-left:4px"></span>';
+      body.appendChild(sep);
+    }
+
     var div = document.createElement('div'); div.className = 'mfield';
     var lbl = document.createElement('label'); lbl.textContent = f.label;
     div.appendChild(lbl);
     var inp;
+
     if (f.type === 'select') {
       inp = document.createElement('select'); inp.id = 'cf-' + f.key;
       COLUNAS_STATUS.forEach(function(o) {
         var opt = document.createElement('option'); opt.value = o; opt.textContent = o;
         if ((data[f.key]||COLUNAS_STATUS[0]) === o) opt.selected = true;
+        inp.appendChild(opt);
+      });
+    } else if (f.type === 'select-pix') {
+      inp = document.createElement('select'); inp.id = 'cf-' + f.key;
+      ['','CPF','CNPJ','Telefone','E-mail','Chave aleatória'].forEach(function(o) {
+        var opt = document.createElement('option'); opt.value = o; opt.textContent = o || '— selecione —';
+        if ((data[f.key]||'') === o) opt.selected = true;
         inp.appendChild(opt);
       });
     } else if (f.type === 'textarea') {
@@ -331,6 +428,14 @@ function renderModalBody(data) {
   });
 }
 
+function sectionIcon(s) {
+  var m = {
+    'Identificação':'tag','Operação':'clipboard-list','Rota':'route',
+    'Transporte':'truck','Financeiro':'currency-dollar','Pagamento':'qrcode','Obs':'notes'
+  };
+  return m[s] || 'circle';
+}
+
 function fecharModal() {
   document.getElementById('modal-card').classList.remove('open'); editCard = null;
 }
@@ -340,6 +445,10 @@ async function salvarCard() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px"></span>Salvando…';
   var dados = {};
+  // DT CODIGO
+  var dtEl = document.getElementById('cf-DT CODIGO');
+  if (dtEl) dados['DT CODIGO'] = dtEl.value;
+  // Demais campos
   CAMPOS_CARD.forEach(function(f) { var el = document.getElementById('cf-'+f.key); if(el) dados[f.key] = el.value; });
   var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
   var payload = editCard
