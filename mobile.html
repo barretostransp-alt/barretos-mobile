@@ -182,38 +182,41 @@ var ABAS_CONFIG  = [{"key": "kanban_pin", "aba": "PINHEIRO", "pfx": "P", "label"
 var COLUNAS_STATUS = ["OPERACIONAL", "COLETA", "AGUARDANDO MANIFESTO", "FATURADO", "MANIFESTOS", "FINALIZADO"];
 var CAMPOS_CARD  = [
   /* ── Identificação ── */
-  {"key": "Resumo",             "label": "Título / Resumo da Operação",  "type": "text",     "section": "Identificação"},
-  {"key": "Status",             "label": "Status",                        "type": "select",   "section": "Identificação"},
+  {"key": "Resumo",                  "label": "Título / Resumo da Operação",  "type": "text",       "section": "Identificação"},
+  {"key": "Status",                  "label": "Status",                        "type": "select",     "section": "Identificação"},
   /* ── Operação ── */
-  {"key": "VENDEDOR",           "label": "Vendedor",                      "type": "text",     "section": "Operação"},
-  {"key": "CLIENTE",            "label": "Cliente",                       "type": "text",     "section": "Operação"},
-  {"key": "CNPJ TOMADOR",       "label": "CNPJ Tomador",                  "type": "text",     "section": "Operação"},
-  {"key": "CONTATO CLIENTE",    "label": "Contato Cliente",               "type": "text",     "section": "Operação"},
-  {"key": "DATA DA COLETA",     "label": "Data da Coleta",                "type": "date",     "section": "Operação"},
-  {"key": "PREVISAO DA ENTREGA","label": "Previsão de Entrega",           "type": "date",     "section": "Operação"},
+  {"key": "VENDEDOR",                "label": "Vendedor",                      "type": "text",       "section": "Operação"},
+  {"key": "CLIENTE",                 "label": "Cliente",                       "type": "text",       "section": "Operação"},
+  {"key": "CNPJ TOMADOR",            "label": "CNPJ Tomador",                  "type": "text",       "section": "Operação"},
+  {"key": "CONTATO CLIENTE",         "label": "Contato Cliente",               "type": "text",       "section": "Operação"},
+  {"key": "ACOMPANHAMENTO",          "label": "Acompanhamento",                "type": "textarea",   "section": "Operação"},
+  {"key": "DATA DA COLETA",          "label": "Data da Coleta",                "type": "date",       "section": "Operação"},
+  {"key": "PREVISAO DA ENTREGA",     "label": "Previsão de Entrega",           "type": "date",       "section": "Operação"},
+  {"key": "DATA DA ENTREGA",         "label": "Data da Entrega (real)",        "type": "date",       "section": "Operação"},
   /* ── Rota ── */
-  {"key": "CIDADE ORIGEM",      "label": "Cidade Origem",                 "type": "text",     "section": "Rota"},
-  {"key": "UF ORIGEM",          "label": "UF Origem",                     "type": "text",     "section": "Rota"},
-  {"key": "CIDADE DESTINO",     "label": "Cidade Destino",                "type": "text",     "section": "Rota"},
-  {"key": "UF DESTINO",         "label": "UF Destino",                    "type": "text",     "section": "Rota"},
+  {"key": "CIDADE ORIGEM",           "label": "Cidade Origem",                 "type": "text",       "section": "Rota"},
+  {"key": "UF ORIGEM",               "label": "UF Origem",                     "type": "text",       "section": "Rota"},
+  {"key": "CIDADE DESTINO",          "label": "Cidade Destino",                "type": "text",       "section": "Rota"},
+  {"key": "UF DESTINO",              "label": "UF Destino",                    "type": "text",       "section": "Rota"},
   /* ── Transporte ── */
-  {"key": "TIPO DE VEICULO",    "label": "Tipo de Veículo",               "type": "text",     "section": "Transporte"},
-  {"key": "MOTORISTA",          "label": "Motorista",                     "type": "text",     "section": "Transporte"},
-  {"key": "TELEFONE MOTORISTA", "label": "Tel. Motorista",                "type": "tel",      "section": "Transporte"},
+  {"key": "TIPO DE VEICULO",         "label": "Tipo de Veículo",               "type": "text",       "section": "Transporte"},
+  {"key": "MOTORISTA",               "label": "Motorista",                     "type": "text",       "section": "Transporte"},
+  {"key": "TELEFONE MOTORISTA",      "label": "Tel. Motorista",                "type": "tel",        "section": "Transporte"},
   /* ── Financeiro ── */
-  {"key": "FRETE CLIENTE",      "label": "Frete Cliente (R$)",            "type": "text",     "section": "Financeiro"},
-  {"key": "FRETE MOTORISTA",    "label": "Frete Motorista (R$)",          "type": "text",     "section": "Financeiro"},
-  {"key": "ADIANTAMENTO",       "label": "Adiantamento (R$)",             "type": "text",     "section": "Financeiro"},
-  {"key": "GERENCIAMENTO",      "label": "Gerenciamento",                 "type": "text",     "section": "Financeiro"},
-  {"key": "CTE",                "label": "CTE",                           "type": "text",     "section": "Financeiro"},
-  {"key": "NF",                 "label": "NF",                            "type": "text",     "section": "Financeiro"},
+  {"key": "FRETE CLIENTE",           "label": "Frete Cliente (R$)",            "type": "text",       "section": "Financeiro"},
+  {"key": "FRETE MOTORISTA",         "label": "Frete Motorista (R$)",          "type": "text",       "section": "Financeiro"},
+  {"key": "CUSTO TOTAL OPERACIONAL", "label": "Custo Total Operacional (R$)",  "type": "text",       "section": "Financeiro"},
+  {"key": "ADIANTAMENTO",            "label": "Adiantamento (R$)",             "type": "text",       "section": "Financeiro"},
+  {"key": "GERENCIAMENTO",           "label": "Gerenciamento",                 "type": "text",       "section": "Financeiro"},
+  {"key": "CTE",                     "label": "CTE",                           "type": "text",       "section": "Financeiro"},
+  {"key": "NF",                      "label": "NF",                            "type": "text",       "section": "Financeiro"},
   /* ── Pagamento ── */
-  {"key": "TITULAR",            "label": "Titular da Conta",              "type": "text",     "section": "Pagamento"},
-  {"key": "TIPO CHAVE PIX",     "label": "Tipo de Chave PIX",             "type": "select-pix","section": "Pagamento"},
-  {"key": "CHAVE PIX",          "label": "Chave PIX",                     "type": "text",     "section": "Pagamento"},
-  {"key": "BANCO",              "label": "Banco",                         "type": "text",     "section": "Pagamento"},
+  {"key": "TITULAR DA CONTA",        "label": "Titular da Conta",              "type": "text",       "section": "Pagamento"},
+  {"key": "TIPO CHAVE PIX",          "label": "Tipo de Chave PIX",             "type": "select-pix", "section": "Pagamento"},
+  {"key": "CHAVE PIX",               "label": "Chave PIX",                     "type": "text",       "section": "Pagamento"},
+  {"key": "BANCO",                   "label": "Banco",                         "type": "text",       "section": "Pagamento"},
   /* ── Obs ── */
-  {"key": "OBSERVACAO",         "label": "Observação",                    "type": "textarea", "section": "Obs"}
+  {"key": "OBSERVACAO",              "label": "Observação",                    "type": "textarea",   "section": "Obs"}
 ];
 
 var currentTab = null, currentCol = COLUNAS_STATUS[0];
@@ -462,7 +465,9 @@ function paintCardsOnly(key) {
     return (c['DT CODIGO']||'').toLowerCase().includes(s)
       || (c['CLIENTE']||'').toLowerCase().includes(s)
       || (c['Resumo']||'').toLowerCase().includes(s)
-      || (c['MOTORISTA']||'').toLowerCase().includes(s);
+      || (c['MOTORISTA']||'').toLowerCase().includes(s)
+      || (c['ACOMPANHAMENTO']||'').toLowerCase().includes(s)
+      || (c['TITULAR DA CONTA']||'').toLowerCase().includes(s);
   });
   var colCards = cards.filter(function(c) { return (c['Status']||'') === currentCol; });
 
@@ -729,22 +734,53 @@ async function salvarCard() {
   var btn = document.getElementById('btn-save');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px"></span>Salvando…';
+
+  // Monta objeto de dados: DT CODIGO + todos os campos do card
   var dados = {};
-  // DT CODIGO
+
+  // DT CODIGO — vem do input editável
   var dtEl = document.getElementById('cf-DT CODIGO');
-  if (dtEl) dados['DT CODIGO'] = dtEl.value;
-  // Demais campos
-  CAMPOS_CARD.forEach(function(f) { var el = document.getElementById('cf-'+f.key); if(el) dados[f.key] = el.value; });
+  if (dtEl) dados['DT CODIGO'] = dtEl.value.trim().toUpperCase();
+
+  // Demais campos (CAMPOS_CARD não inclui DT CODIGO, então sem duplicata)
+  CAMPOS_CARD.forEach(function(f) {
+    var el = document.getElementById('cf-' + f.key);
+    if (el) dados[f.key] = el.value;
+  });
+
+  // Campos exatamente como definidos no COLUNAS do Apps Script
+  var CAMPOS_PLANILHA = [
+    "DT CODIGO","Resumo","Status","VENDEDOR","CNPJ TOMADOR","CLIENTE",
+    "CONTATO CLIENTE","ACOMPANHAMENTO","CTE","NF","DATA DA COLETA",
+    "PREVISAO DA ENTREGA","CIDADE ORIGEM","UF ORIGEM","CIDADE DESTINO",
+    "UF DESTINO","FRETE CLIENTE","FRETE MOTORISTA","CUSTO TOTAL OPERACIONAL",
+    "ADIANTAMENTO","TIPO DE VEICULO","MOTORISTA","TELEFONE MOTORISTA",
+    "GERENCIAMENTO","DATA DA ENTREGA","TITULAR DA CONTA","TIPO CHAVE PIX",
+    "CHAVE PIX","BANCO","OBSERVACAO"
+  ];
+
+  // Monta dados só com campos conhecidos
+  var dadosFiltrados = {};
+  CAMPOS_PLANILHA.forEach(function(col) {
+    if (dados[col] !== undefined) dadosFiltrados[col] = dados[col];
+  });
+
   var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
+
   var payload = editCard
-    ? {action:'update', aba:aba.aba, chave:editCard.card['DT CODIGO'], dados:dados}
-    : {action:'create', aba:aba.aba, dados:dados};
+    ? {action:'update', aba:aba.aba, chave:editCard.card['DT CODIGO'], dados:dadosFiltrados}
+    : {action:'create', aba:aba.aba, dados:dadosFiltrados};
+
+  console.log('[salvarCard] payload:', JSON.stringify(payload));
+
   try {
     var r = await fetch(URL_KANBANS, {method:'POST', body:JSON.stringify(payload)});
     var j = await r.json();
+    console.log('[salvarCard] resposta:', JSON.stringify(j));
     if (j.success) { fecharModal(); await renderKanban(currentTab); }
     else alert('Erro: ' + (j.error||'desconhecido'));
-  } catch(e) { alert('Erro de conexão.'); }
+  } catch(e) { alert('Erro de conexão: ' + e.message); }
+
   btn.disabled = false;
   btn.innerHTML = '<i class="ti ti-device-floppy" style="font-size:13px"></i> Salvar';
 }
