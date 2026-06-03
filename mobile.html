@@ -58,6 +58,39 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
 .ci-tag{font-size:10px;color:var(--txt-dim);background:var(--card);padding:2px 7px;border-radius:4px;display:flex;align-items:center;gap:3px;}
 .ci-arrow{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--txt-dim);font-size:16px;}
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60%;gap:12px;color:var(--txt-dim);text-align:center;}
+
+/* ── Pull to refresh ── */
+.ptr-indicator{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  height:0;overflow:hidden;transition:height .2s;
+  font-size:12px;color:var(--txt-dim);flex-shrink:0;
+  background:var(--bg);
+}
+.ptr-indicator.visible{height:44px;}
+.ptr-indicator .spinner{width:16px;height:16px;border-width:2px;}
+.ptr-arrow{font-size:18px;transition:transform .3s;display:inline-block;}
+.ptr-arrow.ready{transform:rotate(180deg);}
+
+/* ── Anexos no modal ── */
+.attach-list{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+.attach-item{
+  display:flex;align-items:center;gap:10px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:9px;padding:10px 12px;
+}
+.attach-icon{font-size:20px;color:var(--gold);flex-shrink:0;}
+.attach-name{flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.attach-size{font-size:10px;color:var(--txt-dim);flex-shrink:0;}
+.attach-del{background:none;border:none;color:var(--txt-dim);cursor:pointer;font-size:16px;padding:2px 4px;}
+.attach-del:active{color:var(--red);}
+.btn-attach{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:11px;border-radius:9px;border:1.5px dashed var(--border);
+  background:transparent;color:var(--txt-dim);font-size:13px;font-family:'DM Sans',sans-serif;
+  cursor:pointer;margin-top:6px;transition:border-color .15s,color .15s;
+}
+.btn-attach:active{border-color:var(--gold);color:var(--gold);}
+
 .empty-state i{font-size:40px;}
 .empty-state p{font-size:13px;}
 .fab{position:fixed;right:16px;bottom:calc(64px + env(safe-area-inset-bottom,0) + 12px);
@@ -105,8 +138,16 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
     <button class="btn-icon" onclick="logout()"><i class="ti ti-logout"></i></button>
   </div>
   <div class="content" id="content">
+    <div class="ptr-indicator" id="ptr-indicator">
+      <i class="ptr-arrow ti ti-arrow-down" id="ptr-arrow"></i>
+      <span id="ptr-label">Puxe para atualizar</span>
+    </div>
     <div class="loader"><div class="spinner"></div></div>
   </div>
+
+  <!-- Input oculto para seleção de arquivos -->
+  <input type="file" id="file-input" multiple accept="*/*"
+    style="display:none" onchange="onFilesSelected(this.files)">
   <div class="bottom-nav" id="bottom-nav"></div>
 </div>
 
@@ -178,14 +219,130 @@ var CAMPOS_CARD  = [
 var currentTab = null, currentCol = COLUNAS_STATUS[0];
 var rawCards = {}, editCard = null, user = null;
 var allowedKeys = null, searchTerm = '';
+var cardAttachments = []; // anexos do card em edição
 
 document.addEventListener('DOMContentLoaded', function() {
   var raw = sessionStorage.getItem('barretos_user') || localStorage.getItem('barretos_user');
   if (!raw) { window.location.href = 'mobile_login.html'; return; }
   try { user = JSON.parse(raw); } catch(e) { window.location.href = 'mobile_login.html'; return; }
   document.getElementById('top-user').textContent = (user.nome||'').split(' ')[0].toUpperCase();
+  initPullToRefresh();
   fetchPermissoes();
 });
+
+/* ── Pull to Refresh ── */
+function initPullToRefresh() {
+  var content  = document.getElementById('content');
+  var ptr      = document.getElementById('ptr-indicator');
+  var arrow    = document.getElementById('ptr-arrow');
+  var lbl      = document.getElementById('ptr-label');
+  var startY   = 0, pulling = false, triggered = false;
+  var THRESHOLD = 70;
+
+  content.addEventListener('touchstart', function(e) {
+    // Só ativa se estiver no topo da área de cards
+    var area = document.getElementById('cards-area');
+    if (area && area.scrollTop > 0) return;
+    startY   = e.touches[0].clientY;
+    pulling  = true;
+    triggered = false;
+  }, {passive: true});
+
+  content.addEventListener('touchmove', function(e) {
+    if (!pulling) return;
+    var dy = e.touches[0].clientY - startY;
+    if (dy <= 0) { ptr.classList.remove('visible'); return; }
+    ptr.classList.add('visible');
+    if (dy >= THRESHOLD && !triggered) {
+      arrow.className = 'ptr-arrow ti ti-arrow-down ready';
+      lbl.textContent = 'Solte para atualizar';
+    } else if (dy < THRESHOLD) {
+      arrow.className = 'ptr-arrow ti ti-arrow-down';
+      lbl.textContent = 'Puxe para atualizar';
+    }
+  }, {passive: true});
+
+  content.addEventListener('touchend', function(e) {
+    if (!pulling) return;
+    pulling = false;
+    var dy = e.changedTouches[0].clientY - startY;
+    if (dy >= THRESHOLD && currentTab) {
+      // Mostra spinner e recarrega
+      arrow.style.display = 'none';
+      lbl.innerHTML = '<span class="spinner"></span> Atualizando…';
+      renderKanban(currentTab).then(function() {
+        ptr.classList.remove('visible');
+        arrow.style.display = '';
+        lbl.textContent = 'Puxe para atualizar';
+        arrow.className = 'ptr-arrow ti ti-arrow-down';
+      });
+    } else {
+      ptr.classList.remove('visible');
+    }
+  }, {passive: true});
+}
+
+/* ── Anexos ── */
+function onFilesSelected(files) {
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    cardAttachments.push({ file: f, name: f.name, size: f.size });
+  }
+  renderAttachments();
+  document.getElementById('file-input').value = '';
+}
+
+function renderAttachments() {
+  var container = document.getElementById('attach-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (cardAttachments.length > 0) {
+    var list = document.createElement('div'); list.className = 'attach-list';
+    cardAttachments.forEach(function(a, idx) {
+      var row = document.createElement('div'); row.className = 'attach-item';
+      var icon = fileIcon(a.name);
+      row.innerHTML =
+        '<i class="ti ti-' + icon + ' attach-icon"></i>' +
+        '<span class="attach-name">' + escHtml(a.name) + '</span>' +
+        '<span class="attach-size">' + formatBytes(a.size) + '</span>' +
+        '<button class="attach-del" onclick="removeAttach(' + idx + ')" title="Remover">' +
+        '<i class="ti ti-x"></i></button>';
+      list.appendChild(row);
+    });
+    container.appendChild(list);
+  }
+
+  var btn = document.createElement('button');
+  btn.className = 'btn-attach';
+  btn.type = 'button';
+  btn.innerHTML = '<i class="ti ti-paperclip" style="font-size:16px"></i> Anexar documento';
+  btn.onclick = function() { document.getElementById('file-input').click(); };
+  container.appendChild(btn);
+}
+
+function removeAttach(idx) {
+  cardAttachments.splice(idx, 1);
+  renderAttachments();
+}
+
+function fileIcon(name) {
+  var ext = (name.split('.').pop() || '').toLowerCase();
+  if (['pdf'].includes(ext)) return 'file-type-pdf';
+  if (['jpg','jpeg','png','gif','webp'].includes(ext)) return 'photo';
+  if (['doc','docx'].includes(ext)) return 'file-type-doc';
+  if (['xls','xlsx','csv'].includes(ext)) return 'file-spreadsheet';
+  if (['zip','rar','7z'].includes(ext)) return 'file-zip';
+  return 'file';
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+
 
 async function fetchPermissoes() {
   try {
@@ -415,6 +572,7 @@ function verificarDuplicidade(codigo, codigoOriginal) {
 
 function abrirNovo() {
   editCard = null;
+  cardAttachments = [];
   document.getElementById('modal-title').textContent = 'Novo Card';
   document.getElementById('btn-del').style.display = 'none';
 
@@ -443,6 +601,7 @@ function abrirNovo() {
 
 function abrirEdicao(card, key) {
   editCard = {card:card, key:key};
+  cardAttachments = [];
   document.getElementById('modal-title').textContent = card['DT CODIGO'] || 'Editar Card';
   document.getElementById('btn-del').style.display = 'block';
   renderModalBody(card);
@@ -532,6 +691,17 @@ function renderModalBody(data) {
     }
     div.appendChild(inp); body.appendChild(div);
   });
+
+  // ── Seção Anexos ──
+  var sepAnex = document.createElement('div');
+  sepAnex.style.cssText = 'margin:16px 0 8px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:8px;';
+  sepAnex.innerHTML = '<i class="ti ti-paperclip" style="font-size:12px"></i>Documentos<span style="flex:1;height:1px;background:var(--border);margin-left:4px"></span>';
+  body.appendChild(sepAnex);
+
+  var attachDiv = document.createElement('div');
+  attachDiv.id = 'attach-container';
+  body.appendChild(attachDiv);
+  renderAttachments();
 }
 
 function sectionIcon(s) {
@@ -543,7 +713,9 @@ function sectionIcon(s) {
 }
 
 function fecharModal() {
-  document.getElementById('modal-card').classList.remove('open'); editCard = null;
+  document.getElementById('modal-card').classList.remove('open');
+  editCard = null;
+  cardAttachments = [];
 }
 
 async function salvarCard() {
