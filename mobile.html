@@ -352,9 +352,9 @@ function gerarProximoCodigo(tabKey) {
   var aba  = ABAS_CONFIG.find(function(a) { return a.key === tabKey; });
   var pfx  = aba ? aba.pfx : 'X';
   var now  = new Date();
-  var ano  = String(now.getFullYear()).slice(-2);           // "26"
-  var mes  = String(now.getMonth() + 1).padStart(2, '0');  // "06"
-  var prefixoMes = pfx + ano + mes;                        // ex: "S2606"
+  var ano  = String(now.getFullYear()).slice(-2);       // "26"
+  var mes  = String(now.getMonth() + 1);               // "6" (sem zero à esquerda)
+  var prefixoMes = pfx + ano + mes;                    // ex: "S266"
 
   // Pega TODOS os cards de TODAS as abas carregadas para garantir unicidade global
   var todosCodigos = [];
@@ -365,7 +365,7 @@ function gerarProximoCodigo(tabKey) {
     });
   });
 
-  // Filtra apenas os que têm o prefixo do mês atual (ex: "S2606")
+  // Filtra apenas os que têm o prefixo do mês atual (ex: "S266")
   var numeros = todosCodigos
     .filter(function(cod) { return cod.startsWith(prefixoMes); })
     .map(function(cod) {
