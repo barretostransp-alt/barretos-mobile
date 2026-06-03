@@ -686,32 +686,42 @@ function renderModalBody(data) {
     codigoAtual = gerarProximoCodigo(currentTab);
   }
 
-  // Input editável (não hidden) — usuário pode ajustar se necessário
+  // Campo DT CODIGO
   var dtInput = document.createElement('input');
   dtInput.type = 'text';
   dtInput.id = 'cf-DT CODIGO';
   dtInput.value = codigoAtual;
-  dtInput.style.cssText = 'font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-size:15px;';
   dtInput.setAttribute('autocomplete','off');
   dtInput.setAttribute('maxlength','8');
 
-  // Alerta de duplicidade
+  // Alerta de duplicidade (só visível ao criar)
   var dtAlert = document.createElement('div');
   dtAlert.id = 'dt-alert';
-  dtAlert.style.cssText = 'display:none;margin-top:5px;font-size:11px;font-weight:700;color:#EF4444;display:flex;align-items:center;gap:5px;';
+  dtAlert.style.cssText = 'margin-top:5px;font-size:11px;font-weight:700;color:#EF4444;align-items:center;gap:5px;';
+  dtAlert.style.display = 'none';
   dtAlert.innerHTML = '<i class="ti ti-alert-triangle" style="font-size:13px"></i> CÓDIGO JÁ USADO — altere antes de salvar';
 
-  dtInput.addEventListener('input', function() {
-    this.value = this.value.toUpperCase();
-    verificarDuplicidade(this.value, data['DT CODIGO'] || '');
-  });
+  if (editCard) {
+    // Edição: código não pode ser alterado
+    dtInput.readOnly = true;
+    dtInput.style.cssText = 'font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-size:15px;opacity:.7;cursor:not-allowed;';
+  } else {
+    // Criação: editável com validação de duplicidade
+    dtInput.style.cssText = 'font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-size:15px;';
+    dtInput.addEventListener('input', function() {
+      this.value = this.value.toUpperCase();
+      verificarDuplicidade(this.value, '');
+    });
+  }
 
   dtDiv.appendChild(dtInput);
   dtDiv.appendChild(dtAlert);
   body.appendChild(dtDiv);
 
-  // Verifica imediatamente se o código gerado já existe
-  if (!editCard) verificarDuplicidade(codigoAtual, '');
+  // Ao criar: verifica se código gerado já existe
+  if (!editCard) {
+    verificarDuplicidade(codigoAtual, '');
+  }
 
 
   // ── Demais campos agrupados por seção ──
@@ -782,11 +792,13 @@ function fecharModal() {
 }
 
 async function salvarCard() {
-  // Bloqueia se código duplicado
-  var dtAlert = document.getElementById('dt-alert');
-  if (dtAlert && dtAlert.style.display === 'flex') {
-    alert('⚠ CÓDIGO JÁ USADO — altere o DT CODIGO antes de salvar.');
-    return;
+  // Bloqueia duplicidade APENAS ao criar card novo (não ao editar)
+  if (!editCard) {
+    var dtAlert = document.getElementById('dt-alert');
+    if (dtAlert && dtAlert.style.display === 'flex') {
+      alert('⚠ CÓDIGO JÁ USADO — altere o DT CODIGO antes de salvar.');
+      return;
+    }
   }
 
   var btn = document.getElementById('btn-save');
