@@ -179,6 +179,56 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
 var URL_USUARIOS = 'https://script.google.com/macros/s/AKfycbyYMOKvOInjNNHjQGlW5k8mGJ6ydl2NKfOr3HRWKrpFXARXxYSsb-vJF5t71yYG_6k69A/exec';
 var URL_KANBANS  = 'https://script.google.com/macros/s/AKfycbwkX0XLYMnWIKa9SsS1oSv9E2hhGYjKi5Fp2cPHA_J_X1jg7NiGVT4YfdFAjZ3Ps2C4Qg/exec';
 var ABAS_CONFIG  = [{"key": "kanban_pin", "aba": "PINHEIRO", "pfx": "P", "label": "Pinheiro", "color": "#F97316"}, {"key": "kanban_inf", "aba": "INFRA", "pfx": "S", "label": "Infra", "color": "#14B8A6"}, {"key": "kanban_bar", "aba": "BARRETO'S", "pfx": "B", "label": "Barreto's", "color": "#F5B800"}, {"key": "kanban_gon", "aba": "GONCALVES", "pfx": "G", "label": "Gonçalves", "color": "#3B82F6"}];
+
+// Mapeamento: campo padrão do mobile → nome real da coluna em cada aba
+// Só precisa listar os que DIFEREM do nome padrão
+var MAPA_COLUNAS_ABA = {
+  "PINHEIRO": {
+    "DT CODIGO":              "Chave",
+    "Resumo":                 "Resumo",
+    "FRETE CLIENTE":          "FRETE COBRADO",
+    "FRETE MOTORISTA":        "FRETE PAGO",
+    "CUSTO TOTAL OPERACIONAL":"CUSTO OPERACIONAL TOTAL",
+    "PREVISAO DA ENTREGA":    "PREVISÃO DE ENTREGA"
+  },
+  "INFRA": {
+    "DT CODIGO":              "Chave",
+    "Resumo":                 "Resumo",
+    "PREVISAO DA ENTREGA":    "PREVISÃO DA ENTREGA"
+    // FRETE CLIENTE, FRETE MOTORISTA, CUSTO TOTAL OPERACIONAL já têm o nome certo na INFRA
+  },
+  "BARRETO'S": {
+    "DT CODIGO":              "Chave",
+    "Resumo":                 "Resumo",
+    "FRETE CLIENTE":          "FRETE COBRADO",
+    "FRETE MOTORISTA":        "FRETE PAGO",
+    "CUSTO TOTAL OPERACIONAL":"CUSTO OPERACIONAL TOTAL",
+    "PREVISAO DA ENTREGA":    "PREVISÃO DE ENTREGA"
+  },
+  "GONCALVES": {
+    "DT CODIGO":              "Chave",
+    "Resumo":                 "Resumo",
+    "FRETE CLIENTE":          "FRETE COBRADO",
+    "FRETE MOTORISTA":        "FRETE PAGO",
+    "CUSTO TOTAL OPERACIONAL":"CUSTO OPERACIONAL TOTAL",
+    "PREVISAO DA ENTREGA":    "PREVISÃO DE ENTREGA"
+  }
+};
+
+// Converte nome de coluna da planilha → chave padrão do mobile (inverso do mapa)
+function colPlanilhaParaPadrao(nomeAba, colPlanilha) {
+  var mapa = MAPA_COLUNAS_ABA[nomeAba] || {};
+  for (var padrao in mapa) {
+    if (mapa[padrao] === colPlanilha) return padrao;
+  }
+  return colPlanilha; // sem mapeamento = nome já é o padrão
+}
+
+// Converte chave padrão do mobile → nome de coluna real na planilha
+function colPadraoParaPlanilha(nomeAba, chavePadrao) {
+  var mapa = MAPA_COLUNAS_ABA[nomeAba] || {};
+  return mapa[chavePadrao] || chavePadrao;
+}
 var COLUNAS_STATUS = ["OPERACIONAL", "COLETA", "AGUARDANDO MANIFESTO", "FATURADO", "MANIFESTOS", "FINALIZADO"];
 var CAMPOS_CARD  = [
   /* ── Identificação ── */
@@ -411,7 +461,15 @@ async function renderKanban(key) {
     var r = await fetch(URL_KANBANS + '?aba=' + encodeURIComponent(aba.aba));
     var j = await r.json();
     if (j.success) {
-      rawCards[key] = j.rows || [];
+      // Normaliza nomes de colunas da planilha para o padrão do mobile
+      rawCards[key] = (j.rows || []).map(function(card) {
+        var normalizado = {};
+        Object.keys(card).forEach(function(colPlanilha) {
+          var chavePadrao = colPlanilhaParaPadrao(aba.aba, colPlanilha);
+          normalizado[chavePadrao] = card[colPlanilha];
+        });
+        return normalizado;
+      });
       document.getElementById('top-sub').textContent = rawCards[key].length + ' cards';
     } else {
       document.getElementById('top-sub').textContent = 'erro ao carregar';
@@ -748,8 +806,8 @@ async function salvarCard() {
     if (el) dados[f.key] = el.value;
   });
 
-  // Campos exatamente como definidos no COLUNAS do Apps Script
-  var CAMPOS_PLANILHA = [
+  // Campos padrão do mobile
+  var CAMPOS_PADRAO = [
     "DT CODIGO","Resumo","Status","VENDEDOR","CNPJ TOMADOR","CLIENTE",
     "CONTATO CLIENTE","ACOMPANHAMENTO","CTE","NF","DATA DA COLETA",
     "PREVISAO DA ENTREGA","CIDADE ORIGEM","UF ORIGEM","CIDADE DESTINO",
@@ -759,17 +817,19 @@ async function salvarCard() {
     "CHAVE PIX","BANCO","OBSERVACAO"
   ];
 
-  // Monta dados só com campos conhecidos
-  var dadosFiltrados = {};
-  CAMPOS_PLANILHA.forEach(function(col) {
-    if (dados[col] !== undefined) dadosFiltrados[col] = dados[col];
-  });
-
   var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
 
+  // Traduz chaves padrão → nomes reais das colunas desta aba
+  var dadosTraduzidos = {};
+  CAMPOS_PADRAO.forEach(function(chavePadrao) {
+    if (dados[chavePadrao] === undefined) return;
+    var colReal = colPadraoParaPlanilha(aba.aba, chavePadrao);
+    dadosTraduzidos[colReal] = dados[chavePadrao];
+  });
+
   var payload = editCard
-    ? {action:'update', aba:aba.aba, chave:editCard.card['DT CODIGO'], dados:dadosFiltrados}
-    : {action:'create', aba:aba.aba, dados:dadosFiltrados};
+    ? {action:'update', aba:aba.aba, chave:editCard.card['DT CODIGO'], dados:dadosTraduzidos}
+    : {action:'create', aba:aba.aba, dados:dadosTraduzidos};
 
   console.log('[salvarCard] payload:', JSON.stringify(payload));
 
@@ -788,9 +848,12 @@ async function salvarCard() {
 async function excluirCard() {
   if (!editCard || !confirm('Excluir este card?')) return;
   var aba = ABAS_CONFIG.find(function(a) { return a.key === editCard.key; });
+  // A chave enviada deve ser o VALOR do DT CODIGO (não o nome da coluna)
+  // O Apps Script busca pelo valor na coluna "Chave" ou "DT CODIGO"
+  var chaveValor = editCard.card['DT CODIGO'];
   try {
     var r = await fetch(URL_KANBANS, {method:'POST',
-      body:JSON.stringify({action:'delete', aba:aba.aba, chave:editCard.card['DT CODIGO']})});
+      body:JSON.stringify({action:'delete', aba:aba.aba, chave:chaveValor})});
     var j = await r.json();
     if (j.success) { fecharModal(); await renderKanban(currentTab); }
     else alert('Erro: ' + j.error);
