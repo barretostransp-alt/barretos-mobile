@@ -26,6 +26,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
   padding:4px 10px;border-radius:20px;border:1px solid var(--gold-b);white-space:nowrap;}
 .btn-icon{background:none;border:none;color:var(--txt-dim);cursor:pointer;font-size:20px;padding:4px;}
 .content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.content.cotacao-mode{overflow-y:auto;}
 .bottom-nav{background:var(--surface);border-top:1px solid var(--border);
   display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0);}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;
@@ -193,14 +194,17 @@ function switchTab(key) {
     document.documentElement.style.setProperty('--accent', aba.color);
     document.getElementById('top-title').textContent = aba.label;
     document.getElementById('fab').style.display = 'flex';
+    document.getElementById('content').classList.remove('cotacao-mode');
     renderKanban(key);
   } else if (key === 'cotacao') {
     document.documentElement.style.setProperty('--accent', '#F5B800');
     document.getElementById('top-title').textContent = 'Cotação Comercial';
     document.getElementById('top-sub').textContent = 'simulação de frete';
     document.getElementById('fab').style.display = 'none';
-    document.getElementById('content').innerHTML =
-      '<iframe src="cotacao_comercial.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write"></iframe>';
+    var contentEl = document.getElementById('content');
+    contentEl.classList.add('cotacao-mode');
+    contentEl.innerHTML =
+      '<iframe src="cotacao_comercial.html" id="cotacao-iframe" style="width:100%;border:none;flex:1;height:100%" allow="clipboard-write" scrolling="yes"></iframe>';
   }
 }
 
