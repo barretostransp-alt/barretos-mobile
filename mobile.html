@@ -234,39 +234,39 @@ function colPadraoParaPlanilha(nomeAba, chavePadrao) {
 var COLUNAS_STATUS = ["OPERACIONAL", "COLETA", "AGUARDANDO MANIFESTO", "FATURADO", "MANIFESTOS", "FINALIZADO"];
 var CAMPOS_CARD  = [
   /* ── Identificação ── */
-  {"key": "Resumo",                  "label": "Título / Resumo da Operação",  "type": "text",       "section": "Identificação"},
-  {"key": "Status",                  "label": "Status",                        "type": "select",     "section": "Identificação"},
+  {"key": "TITULO",                  "label": "Título do Card",               "type": "text",       "section": "Identificação"},
+  {"key": "Status",                  "label": "Status",                       "type": "select",     "section": "Identificação"},
   /* ── Operação ── */
-  {"key": "VENDEDOR",                "label": "Vendedor",                      "type": "text",       "section": "Operação"},
-  {"key": "CLIENTE",                 "label": "Cliente",                       "type": "text",       "section": "Operação"},
-  {"key": "CNPJ TOMADOR",            "label": "CNPJ Tomador",                  "type": "text",       "section": "Operação"},
-  {"key": "CONTATO CLIENTE",         "label": "Contato Cliente",               "type": "text",       "section": "Operação"},
-  {"key": "ACOMPANHAMENTO",          "label": "Acompanhamento",                "type": "textarea",   "section": "Operação"},
-  {"key": "DATA DA COLETA",          "label": "Data da Coleta",                "type": "date",       "section": "Operação"},
-  {"key": "PREVISAO DA ENTREGA",     "label": "Previsão de Entrega",           "type": "date",       "section": "Operação"},
-  {"key": "DATA DA ENTREGA",         "label": "Data da Entrega (real)",        "type": "date",       "section": "Operação"},
+  {"key": "VENDEDOR",                "label": "Vendedor",                     "type": "text",       "section": "Operação"},
+  {"key": "CLIENTE",                 "label": "Cliente",                      "type": "text",       "section": "Operação"},
+  {"key": "CNPJ TOMADOR",            "label": "CNPJ Tomador",                 "type": "text",       "section": "Operação"},
+  {"key": "CONTATO CLIENTE",         "label": "Contato Cliente",              "type": "text",       "section": "Operação"},
+  {"key": "ACOMPANHAMENTO",          "label": "Acompanhamento",               "type": "textarea",   "section": "Operação"},
+  {"key": "DATA DA COLETA",          "label": "Data da Coleta",               "type": "date",       "section": "Operação"},
+  {"key": "PREVISAO DA ENTREGA",     "label": "Previsão de Entrega",          "type": "date",       "section": "Operação"},
+  {"key": "DATA DA ENTREGA",         "label": "Data da Entrega (real)",       "type": "date",       "section": "Operação"},
   /* ── Rota ── */
-  {"key": "CIDADE ORIGEM",           "label": "Cidade Origem",                 "type": "text",       "section": "Rota"},
-  {"key": "UF ORIGEM",               "label": "UF Origem",                     "type": "text",       "section": "Rota"},
-  {"key": "CIDADE DESTINO",          "label": "Cidade Destino",                "type": "text",       "section": "Rota"},
-  {"key": "UF DESTINO",              "label": "UF Destino",                    "type": "text",       "section": "Rota"},
+  {"key": "CIDADE ORIGEM",           "label": "Cidade Origem",                "type": "text",       "section": "Rota"},
+  {"key": "UF ORIGEM",               "label": "UF Origem",                    "type": "text",       "section": "Rota"},
+  {"key": "CIDADE DESTINO",          "label": "Cidade Destino",               "type": "text",       "section": "Rota"},
+  {"key": "UF DESTINO",              "label": "UF Destino",                   "type": "text",       "section": "Rota"},
   /* ── Transporte ── */
-  {"key": "TIPO DE VEICULO",         "label": "Tipo de Veículo",               "type": "text",       "section": "Transporte"},
-  {"key": "MOTORISTA",               "label": "Motorista",                     "type": "text",       "section": "Transporte"},
-  {"key": "TELEFONE MOTORISTA",      "label": "Tel. Motorista",                "type": "tel",        "section": "Transporte"},
+  {"key": "TIPO DE VEICULO",         "label": "Tipo de Veículo",              "type": "text",       "section": "Transporte"},
+  {"key": "MOTORISTA",               "label": "Motorista",                    "type": "text",       "section": "Transporte"},
+  {"key": "TELEFONE MOTORISTA",      "label": "Tel. Motorista",               "type": "tel",        "section": "Transporte"},
   /* ── Financeiro ── */
-  {"key": "FRETE CLIENTE",           "label": "Frete Cliente (R$)",            "type": "text",       "section": "Financeiro"},
-  {"key": "FRETE MOTORISTA",         "label": "Frete Motorista (R$)",          "type": "text",       "section": "Financeiro"},
-  {"key": "CUSTO TOTAL OPERACIONAL", "label": "Custo Total Operacional (R$)",  "type": "text",       "section": "Financeiro"},
-  {"key": "ADIANTAMENTO",            "label": "Adiantamento (R$)",             "type": "text",       "section": "Financeiro"},
-  {"key": "GERENCIAMENTO",           "label": "Gerenciamento",                 "type": "text",       "section": "Financeiro"},
-  {"key": "CTE",                     "label": "CTE",                           "type": "text",       "section": "Financeiro"},
-  {"key": "NF",                      "label": "NF",                            "type": "text",       "section": "Financeiro"},
+  {"key": "FRETE CLIENTE",           "label": "Frete Cliente (R$)",           "type": "text",       "section": "Financeiro"},
+  {"key": "FRETE MOTORISTA",         "label": "Frete Motorista (R$)",         "type": "text",       "section": "Financeiro"},
+  {"key": "CUSTO TOTAL OPERACIONAL", "label": "Custo Total Operacional (R$)", "type": "text",       "section": "Financeiro"},
+  {"key": "ADIANTAMENTO",            "label": "Adiantamento (%)",             "type": "percent",    "section": "Financeiro"},
+  {"key": "GERENCIAMENTO",           "label": "Gerenciamento",                "type": "text",       "section": "Financeiro"},
+  {"key": "CTE",                     "label": "CTE",                          "type": "text",       "section": "Financeiro"},
+  {"key": "NF",                      "label": "NF",                           "type": "text",       "section": "Financeiro"},
   /* ── Pagamento ── */
-  {"key": "TITULAR DA CONTA",        "label": "Titular da Conta",              "type": "text",       "section": "Pagamento"},
-  {"key": "TIPO CHAVE PIX",          "label": "Tipo de Chave PIX",             "type": "select-pix", "section": "Pagamento"},
-  {"key": "CHAVE PIX",               "label": "Chave PIX",                     "type": "text",       "section": "Pagamento"},
-  {"key": "BANCO",                   "label": "Banco",                         "type": "text",       "section": "Pagamento"},
+  {"key": "TITULAR DA CONTA",        "label": "Titular da Conta",             "type": "text",       "section": "Pagamento"},
+  {"key": "TIPO CHAVE PIX",          "label": "Tipo de Chave PIX",            "type": "select-pix", "section": "Pagamento"},
+  {"key": "CHAVE PIX",               "label": "Chave PIX",                    "type": "text",       "section": "Pagamento"},
+  {"key": "BANCO",                   "label": "Banco",                        "type": "text",       "section": "Pagamento"},
   /* ── Obs ── */
   {"key": "OBSERVACAO",              "label": "Observação",                    "type": "textarea",   "section": "Obs"}
 ];
@@ -339,12 +339,59 @@ function initPullToRefresh() {
 
 /* ── Anexos ── */
 function onFilesSelected(files) {
+  var btn = document.querySelector('.btn-attach');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle"></span> Enviando...'; }
+  var total = files.length, done = 0;
   for (var i = 0; i < files.length; i++) {
-    var f = files[i];
-    cardAttachments.push({ file: f, name: f.name, size: f.size });
+    (function(file) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var base64 = e.target.result.split(',')[1];
+        var chave = editCard ? editCard.card['DT CODIGO'] : '_temp_';
+        fetch(URL_KANBANS, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'upload_anexo',
+            chave: chave,
+            nome: file.name,
+            data: base64,
+            mimeType: file.type || 'application/octet-stream'
+          })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          if (j.success) cardAttachments.push(j.anexo);
+          done++;
+          if (done === total) {
+            renderAttachments();
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-paperclip" style="font-size:16px"></i> Anexar documento'; }
+          }
+        })
+        .catch(function() {
+          done++;
+          if (done === total) {
+            renderAttachments();
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-paperclip" style="font-size:16px"></i> Anexar documento'; }
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    })(files[i]);
   }
-  renderAttachments();
   document.getElementById('file-input').value = '';
+}
+
+function carregarAnexos(chave) {
+  if (!chave) return;
+  fetch(URL_KANBANS + '?action=anexos&chave=' + encodeURIComponent(chave))
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+      if (j.success) {
+        cardAttachments = j.anexos || [];
+        renderAttachments();
+      }
+    })
+    .catch(function() {});
 }
 
 function renderAttachments() {
@@ -356,11 +403,16 @@ function renderAttachments() {
     var list = document.createElement('div'); list.className = 'attach-list';
     cardAttachments.forEach(function(a, idx) {
       var row = document.createElement('div'); row.className = 'attach-item';
-      var icon = fileIcon(a.name);
+      var icon = fileIcon(a.nome || a.name || '');
+      var nome = escHtml(a.nome || a.name || 'arquivo');
+      var size = a.size ? formatBytes(a.size) : '';
+      var url = a.url || '';
       row.innerHTML =
+        '<a href="' + url + '" target="_blank" style="display:flex;align-items:center;gap:10px;flex:1;text-decoration:none;color:inherit;">' +
         '<i class="ti ti-' + icon + ' attach-icon"></i>' +
-        '<span class="attach-name">' + escHtml(a.name) + '</span>' +
-        '<span class="attach-size">' + formatBytes(a.size) + '</span>' +
+        '<span class="attach-name">' + nome + '</span>' +
+        (size ? '<span class="attach-size">' + size + '</span>' : '') +
+        '</a>' +
         '<button class="attach-del" onclick="removeAttach(' + idx + ')" title="Remover">' +
         '<i class="ti ti-x"></i></button>';
       list.appendChild(row);
@@ -377,6 +429,13 @@ function renderAttachments() {
 }
 
 function removeAttach(idx) {
+  var anexo = cardAttachments[idx];
+  if (anexo && anexo.id) {
+    fetch(URL_KANBANS, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'excluir_anexo', fileId: anexo.id })
+    }).catch(function() {});
+  }
   cardAttachments.splice(idx, 1);
   renderAttachments();
 }
@@ -555,7 +614,7 @@ function paintCardsOnly(key) {
     colCards.forEach(function(c) {
       var div = document.createElement('div'); div.className = 'card-item';
       div.style.setProperty('border-left-color', aba.color);
-      var resumo = c['Resumo'] || '';
+      var resumo = c['TITULO'] || (c['Resumo']||'').split(' - ').slice(1).join(' - ') || '';
       div.innerHTML =
         '<div class="ci-code">' + escHtml(c['DT CODIGO']||'') + '</div>'
         + (resumo ? '<div class="ci-route"><i class="ti ti-route" style="font-size:9px"></i> ' + escHtml(resumo) + '</div>' : '')
@@ -671,6 +730,8 @@ function abrirEdicao(card, key) {
   document.getElementById('btn-del').style.display = 'block';
   renderModalBody(card);
   document.getElementById('modal-card').classList.add('open');
+  // Carrega anexos do Drive
+  carregarAnexos(card['DT CODIGO']);
 }
 
 function renderModalBody(data) {
@@ -758,6 +819,20 @@ function renderModalBody(data) {
         if ((data[f.key]||'') === o) opt.selected = true;
         inp.appendChild(opt);
       });
+    } else if (f.type === 'percent') {
+      var pw = document.createElement('div');
+      pw.style.cssText = 'display:flex;align-items:center;gap:6px;';
+      inp = document.createElement('input'); inp.type = 'text';
+      inp.id = 'cf-' + f.key; inp.value = data[f.key]||'';
+      inp.style.flex = '1';
+      inp.placeholder = '0';
+      inp.oninput = function() { this.value = this.value.replace(/[^0-9.,]/g,''); };
+      var pct = document.createElement('span');
+      pct.textContent = '%';
+      pct.style.cssText = 'font-size:14px;font-weight:700;color:var(--gold);flex-shrink:0;';
+      pw.appendChild(inp); pw.appendChild(pct);
+      div.appendChild(lbl); div.appendChild(pw); body.appendChild(div);
+      return; // já appended
     } else if (f.type === 'textarea') {
       inp = document.createElement('textarea'); inp.id = 'cf-' + f.key; inp.value = data[f.key]||'';
     } else {
