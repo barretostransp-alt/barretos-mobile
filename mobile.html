@@ -182,36 +182,38 @@ var ABAS_CONFIG  = [{"key": "kanban_pin", "aba": "PINHEIRO", "pfx": "P", "label"
 
 // Mapeamento: campo padrão do mobile → nome real da coluna em cada aba
 // Só precisa listar os que DIFEREM do nome padrão
+// Mapeamento: campo padrão interno do mobile → nome real da coluna na planilha
+// Baseado nos cabeçalhos reais de cada aba (confirmados via debugTorre)
+// INFRA:    FRETE CLIENTE / FRETE MOTORISTA / CUSTO TOTAL OPERACIONAL / PREVISÃO DA ENTREGA
+// Demais:   FRETE COBRADO / FRETE PAGO / CUSTO OPERACIONAL TOTAL / PREVISÃO DE ENTREGA
 var MAPA_COLUNAS_ABA = {
   "PINHEIRO": {
-    "DT CODIGO":              "Chave",
-    "Resumo":                 "Resumo",
-    "FRETE CLIENTE":          "FRETE COBRADO",
-    "FRETE MOTORISTA":        "FRETE PAGO",
-    "CUSTO TOTAL OPERACIONAL":"CUSTO OPERACIONAL TOTAL",
-    "PREVISAO DA ENTREGA":    "PREVISÃO DE ENTREGA"
+    "DT CODIGO":               "Chave",
+    "FRETE CLIENTE":           "FRETE COBRADO",
+    "FRETE MOTORISTA":         "FRETE PAGO",
+    "CUSTO TOTAL OPERACIONAL": "CUSTO OPERACIONAL TOTAL",
+    "PREVISAO DA ENTREGA":     "PREVISÃO DE ENTREGA"
   },
   "INFRA": {
-    "DT CODIGO":              "Chave",
-    "Resumo":                 "Resumo",
-    "PREVISAO DA ENTREGA":    "PREVISÃO DA ENTREGA"
-    // FRETE CLIENTE, FRETE MOTORISTA, CUSTO TOTAL OPERACIONAL já têm o nome certo na INFRA
+    "DT CODIGO":               "Chave",
+    "FRETE CLIENTE":           "FRETE CLIENTE",
+    "FRETE MOTORISTA":         "FRETE MOTORISTA",
+    "CUSTO TOTAL OPERACIONAL": "CUSTO TOTAL OPERACIONAL",
+    "PREVISAO DA ENTREGA":     "PREVISÃO DA ENTREGA"
   },
   "BARRETO'S": {
-    "DT CODIGO":              "Chave",
-    "Resumo":                 "Resumo",
-    "FRETE CLIENTE":          "FRETE COBRADO",
-    "FRETE MOTORISTA":        "FRETE PAGO",
-    "CUSTO TOTAL OPERACIONAL":"CUSTO OPERACIONAL TOTAL",
-    "PREVISAO DA ENTREGA":    "PREVISÃO DE ENTREGA"
+    "DT CODIGO":               "Chave",
+    "FRETE CLIENTE":           "FRETE COBRADO",
+    "FRETE MOTORISTA":         "FRETE PAGO",
+    "CUSTO TOTAL OPERACIONAL": "CUSTO OPERACIONAL TOTAL",
+    "PREVISAO DA ENTREGA":     "PREVISÃO DE ENTREGA"
   },
   "GONCALVES": {
-    "DT CODIGO":              "Chave",
-    "Resumo":                 "Resumo",
-    "FRETE CLIENTE":          "FRETE COBRADO",
-    "FRETE MOTORISTA":        "FRETE PAGO",
-    "CUSTO TOTAL OPERACIONAL":"CUSTO OPERACIONAL TOTAL",
-    "PREVISAO DA ENTREGA":    "PREVISÃO DE ENTREGA"
+    "DT CODIGO":               "Chave",
+    "FRETE CLIENTE":           "FRETE COBRADO",
+    "FRETE MOTORISTA":         "FRETE PAGO",
+    "CUSTO TOTAL OPERACIONAL": "CUSTO OPERACIONAL TOTAL",
+    "PREVISAO DA ENTREGA":     "PREVISÃO DE ENTREGA"
   }
 };
 
@@ -818,15 +820,15 @@ async function salvarCard() {
     if (el) dados[f.key] = el.value;
   });
 
-  // Campos padrão do mobile
+  // Campos padrão internos do mobile — o mapa traduz para o nome real de cada aba
   var CAMPOS_PADRAO = [
-    "DT CODIGO","Resumo","Status","VENDEDOR","CNPJ TOMADOR","CLIENTE",
+    "DT CODIGO","Resumo","Status","Responsável","VENDEDOR","CNPJ TOMADOR","CLIENTE",
     "CONTATO CLIENTE","ACOMPANHAMENTO","CTE","NF","DATA DA COLETA",
     "PREVISAO DA ENTREGA","CIDADE ORIGEM","UF ORIGEM","CIDADE DESTINO",
     "UF DESTINO","FRETE CLIENTE","FRETE MOTORISTA","CUSTO TOTAL OPERACIONAL",
     "ADIANTAMENTO","TIPO DE VEICULO","MOTORISTA","TELEFONE MOTORISTA",
     "GERENCIAMENTO","DATA DA ENTREGA","TITULAR DA CONTA","TIPO CHAVE PIX",
-    "CHAVE PIX","BANCO","OBSERVACAO"
+    "CHAVE PIX","BANCO","OBSERVACAO","TITULO"
   ];
 
   var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
