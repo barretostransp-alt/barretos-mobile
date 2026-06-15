@@ -147,7 +147,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
 
   <!-- Input oculto para seleção de arquivos -->
   <input type="file" id="file-input" multiple accept="*/*"
-    style="display:none" onchange="onFilesSelected(this.files)">
+    style="display:none" onchange="onFilesSelected(this.files)" capture="">
   <div class="bottom-nav" id="bottom-nav"></div>
 </div>
 
@@ -368,13 +368,15 @@ function onFilesSelected(files) {
     });
   }
 
-  // Envia um arquivo por vez (sequencial) — o Apps Script não suporta paralelo
+  // Envia um arquivo por vez (sequencial) — Apps Script não suporta paralelo
   (async function enviarSequencial() {
     for (var i = 0; i < filesArray.length; i++) {
       var file = filesArray[i];
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle"></span> Enviando ' + (i + 1) + '/' + total + '…';
+        btn.innerHTML =
+          '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></span>'
+          + 'Enviando ' + (i + 1) + ' de ' + total + '…';
       }
       try {
         var base64 = await lerBase64(file);
@@ -647,7 +649,7 @@ function paintCardsOnly(key) {
       div.style.setProperty('border-left-color', aba.color);
       var resumo = c['TITULO'] || (c['Resumo']||'').split(' - ').slice(1).join(' - ') || '';
       div.innerHTML =
-        '<div class="ci-code">' + escHtml(c['DT CODIGO']||'') + '</div>'
+        '<div class="ci-code">' + escHtml(c['DT CODIGO']||'') + (c['CTE'] ? ' <span style="font-size:9px;font-weight:400;color:var(--txt-dim);letter-spacing:0">· CTE ' + escHtml(c['CTE']) + '</span>' : '') + '</div>'
         + (resumo ? '<div class="ci-route"><i class="ti ti-route" style="font-size:9px"></i> ' + escHtml(resumo) + '</div>' : '')
         + '<div class="ci-title">' + escHtml(c['CLIENTE']||'(sem cliente)') + '</div>'
         + '<div class="ci-meta">'
