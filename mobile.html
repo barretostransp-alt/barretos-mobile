@@ -339,6 +339,20 @@ function initPullToRefresh() {
 
 /* ── Anexos ── */
 function onFilesSelected(files) {
+  // Resolve a chave real: card em edição OU DT CODIGO digitado no formulário
+  var chave = '';
+  if (editCard && editCard.card['DT CODIGO']) {
+    chave = editCard.card['DT CODIGO'];
+  } else {
+    var dtEl = document.getElementById('cf-DT CODIGO');
+    chave = dtEl ? dtEl.value.trim().toUpperCase() : '';
+  }
+  if (!chave) {
+    alert('⚠ Preencha o DT CODIGO antes de anexar arquivos.');
+    document.getElementById('file-input').value = '';
+    return;
+  }
+
   var btn = document.querySelector('.btn-attach');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle"></span> Enviando...'; }
   var total = files.length, done = 0;
@@ -347,7 +361,6 @@ function onFilesSelected(files) {
       var reader = new FileReader();
       reader.onload = function(e) {
         var base64 = e.target.result.split(',')[1];
-        var chave = editCard ? editCard.card['DT CODIGO'] : '_temp_';
         fetch(URL_KANBANS, {
           method: 'POST',
           body: JSON.stringify({
