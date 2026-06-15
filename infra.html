@@ -724,34 +724,41 @@ async function saveAtt(key) {
   if (!WEBAPP_URL) { console.error("[saveAtt] WEBAPP_URL não configurada — upload cancelado"); return; }
   var btn = document.getElementById("btn-sv");
   var orig = btn ? btn.innerHTML : "";
-  if (btn) btn.innerHTML = "<span class=\"spinner\"></span> Enviando anexos…";
+  var total = pendAtt.length;
   var erros = [];
-  var promises = pendAtt.map(function(f) {
-    return new Promise(function(resolve) {
-      var reader = new FileReader();
-      reader.onload = function(ev) {
-        var base64 = ev.target.result.split(",")[1];
-        fetch(WEBAPP_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "upload_anexo",
-            chave: key,
-            nome: f.name,
-            data: base64,
-            mimeType: f.type || "application/octet-stream"
-          })
-        }).then(function(r) { return r.json(); })
-          .then(function(j) {
-            console.log('[saveAtt] resposta Drive:', JSON.stringify(j));
-            if (j.success && j.anexo) driveAtts.push(j.anexo);
-            else { console.error('[saveAtt] erro:', j.error); erros.push(f.name); }
-            resolve();
-          }).catch(function(err) { console.error('[saveAtt] fetch erro:', err); erros.push(f.name); resolve(); });
-      };
-      reader.readAsDataURL(f);
-    });
-  });
-  await Promise.all(promises);
+
+  // Envia sequencialmente — Apps Script não suporta chamadas paralelas
+  for (var i = 0; i < pendAtt.length; i++) {
+    var f = pendAtt[i];
+    if (btn) btn.innerHTML = "<span class=\"spinner\"></span> Enviando anexo " + (i + 1) + "/" + total + "…";
+    try {
+      var base64 = await new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function(ev) { resolve(ev.target.result.split(",")[1]); };
+        reader.onerror = function() { reject(new Error("Falha ao ler " + f.name)); };
+        reader.readAsDataURL(f);
+      });
+      var r = await fetch(WEBAPP_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "upload_anexo",
+          chave: key,
+          nome: f.name,
+          data: base64,
+          mimeType: f.type || "application/octet-stream"
+        })
+      });
+      var j = await r.json();
+      console.log('[saveAtt] resposta Drive:', JSON.stringify(j));
+      if (j.success && j.anexo) driveAtts.push(j.anexo);
+      else { console.error('[saveAtt] erro:', j.error); erros.push(f.name); }
+    } catch(err) {
+      console.error('[saveAtt] erro:', err);
+      erros.push(f.name);
+    }
+    renderAttList();
+  }
+
   pendAtt = [];
   if (btn) btn.innerHTML = orig;
   renderAttList();
