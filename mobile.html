@@ -354,14 +354,31 @@ function onFilesSelected(files) {
   }
 
   var btn = document.querySelector('.btn-attach');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle"></span> Enviando...'; }
-  var total = files.length, done = 0;
-  for (var i = 0; i < files.length; i++) {
-    (function(file) {
+  var filesArray = Array.prototype.slice.call(files);
+  var total = filesArray.length;
+  var erros = [];
+
+  // Lê um arquivo como base64 (Promise)
+  function lerBase64(file) {
+    return new Promise(function(resolve, reject) {
       var reader = new FileReader();
-      reader.onload = function(e) {
-        var base64 = e.target.result.split(',')[1];
-        fetch(URL_KANBANS, {
+      reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+      reader.onerror = function() { reject(new Error('Falha ao ler ' + file.name)); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Envia um arquivo por vez (sequencial) — o Apps Script não suporta paralelo
+  (async function enviarSequencial() {
+    for (var i = 0; i < filesArray.length; i++) {
+      var file = filesArray[i];
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;display:inline-block;vertical-align:middle"></span> Enviando ' + (i + 1) + '/' + total + '…';
+      }
+      try {
+        var base64 = await lerBase64(file);
+        var r = await fetch(URL_KANBANS, {
           method: 'POST',
           body: JSON.stringify({
             action: 'upload_anexo',
@@ -370,27 +387,28 @@ function onFilesSelected(files) {
             data: base64,
             mimeType: file.type || 'application/octet-stream'
           })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(j) {
-          if (j.success) cardAttachments.push(j.anexo);
-          done++;
-          if (done === total) {
-            renderAttachments();
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-paperclip" style="font-size:16px"></i> Anexar documento'; }
-          }
-        })
-        .catch(function() {
-          done++;
-          if (done === total) {
-            renderAttachments();
-            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-paperclip" style="font-size:16px"></i> Anexar documento'; }
-          }
         });
-      };
-      reader.readAsDataURL(file);
-    })(files[i]);
-  }
+        var j = await r.json();
+        if (j.success && j.anexo) {
+          cardAttachments.push(j.anexo);
+        } else {
+          erros.push(file.name);
+        }
+      } catch (err) {
+        erros.push(file.name);
+      }
+      renderAttachments();
+    }
+
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="ti ti-paperclip" style="font-size:16px"></i> Anexar documento';
+    }
+    if (erros.length) {
+      alert('⚠ Falha ao enviar ' + erros.length + ' arquivo(s):\n' + erros.join('\n'));
+    }
+  })();
+
   document.getElementById('file-input').value = '';
 }
 
