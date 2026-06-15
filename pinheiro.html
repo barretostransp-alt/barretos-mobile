@@ -290,6 +290,14 @@ function fromDateInp(s){
 
 var WEBAPP_URL=localStorage.getItem(SK)||"";
 var allCards=[],editKey=null,vendedores=[],pendAtt=[],driveAtts=[];
+// ── getExtra / saveExtra — compatibilidade com dados antigos
+function getExtra(key) {
+  try { return JSON.parse(localStorage.getItem(EXTK+key)||"{}"); } catch(e) { return {}; }
+}
+function saveExtra(key, dados) {
+  try { localStorage.setItem(EXTK+key, JSON.stringify(dados)); } catch(e) {}
+}
+
 
 document.addEventListener("DOMContentLoaded",function(){
   document.getElementById("cfg-url").value=WEBAPP_URL;
@@ -473,6 +481,8 @@ function buildForm(data,isNew){
     "<div class=\"fg\"><label>CNPJ Tomador</label>"+inp("CNPJ TOMADOR","00.000.000/0000-00")+"</div>"+
     "<div class=\"fg\"><label>Cliente *</label>"+inp("CLIENTE","Nome do cliente")+"</div>"+
     "<div class=\"fg\"><label>Contato Cliente</label>"+inp("CONTATO CLIENTE","Nome / Telefone")+"</div>"+
+    "<div class=\"fg\"><label>Data da Coleta</label>"+dateinp("DATA DA COLETA")+"</div>"+
+    "<div class=\"fg\"><label>Previs\u00e3o de Entrega</label>"+dateinp("PREVIS\u00c3O DE ENTREGA")+"</div>"+
   "</div></div>"+
 
   // ── FISCAL
@@ -480,8 +490,7 @@ function buildForm(data,isNew){
   "<div class=\"fg-grid g4\">"+
     "<div class=\"fg\"><label>CTE</label>"+inp("CTE","Número CTE")+"</div>"+
     "<div class=\"fg\"><label>NF</label>"+inp("NF","Número NF")+"</div>"+
-    "<div class=\"fg\"><label>Data da Coleta</label>"+dateinp("DATA DA COLETA")+"</div>"+
-    "<div class=\"fg\"><label>Previsão de Entrega</label>"+dateinp("PREVISÃO DE ENTREGA")+"</div>"+
+    "<div class=\"fg\"><label>Data da Entrega</label>"+dateinp("DATA DA ENTREGA")+"</div>"+
   "</div></div>"+
 
   // ── ROTA
@@ -491,7 +500,6 @@ function buildForm(data,isNew){
     "<div class=\"fg\"><label>UF Origem</label>"+
       "<input id=\""+fid("UF ORIGEM")+"\" value=\""+e(data["UF ORIGEM"]||"")+"\" maxlength=\"2\" oninput=\"this.value=this.value.toUpperCase()\">"+
     "</div>"+
-    "<div class=\"fg\"><label>Data da Entrega</label>"+dateinp("DATA DA ENTREGA")+"</div>"+
     "<div class=\"fg sp2\"><label>Cidade Destino</label>"+inp("CIDADE DESTINO","Cidade de destino")+"</div>"+
     "<div class=\"fg\"><label>UF Destino</label>"+
       "<input id=\""+fid("UF DESTINO")+"\" value=\""+e(data["UF DESTINO"]||"")+"\" maxlength=\"2\" oninput=\"this.value=this.value.toUpperCase()\">"+
@@ -609,7 +617,7 @@ async function saveCard(){
     if(!j.success)throw new Error(j.error);
     var ck=editKey||dados["DT CODIGO"];
     saveExtra(ck,dados);
-    saveAtt(ck);
+    await saveAtt(ck);
     msg.textContent=editKey?"Atualizado!":"Card "+dados["DT CODIGO"]+" criado!";
     msg.className="mmsg";
     await loadData();
@@ -687,11 +695,14 @@ function getAtt(key) {
 }
 
 function handleFiles(files) {
+  console.log("[handleFiles] arquivos selecionados:", files.length);
   Array.prototype.forEach.call(files, function(f) {
     if (f.size > 10*1048576) { alert("Arquivo " + f.name + " excede 10MB."); return; }
+    console.log("[handleFiles] adicionando:", f.name, f.size, f.type);
     pendAtt.push(f);
     renderAttList();
   });
+  console.log("[handleFiles] pendAtt total:", pendAtt.length);
 }
 
 function rmAtt(i) { pendAtt.splice(i, 1); renderAttList(); }
@@ -707,10 +718,14 @@ function rmAttDrive(fileId, i) {
 }
 
 async function saveAtt(key) {
-  if (!pendAtt.length) return;
+  console.log("[saveAtt] chamado com key:", key, "pendAtt:", pendAtt.length);
+  if (!pendAtt.length) { console.log("[saveAtt] nenhum pendente, pulando"); return; }
+  if (!key) { console.error("[saveAtt] chave vazia — upload cancelado"); return; }
+  if (!WEBAPP_URL) { console.error("[saveAtt] WEBAPP_URL não configurada — upload cancelado"); return; }
   var btn = document.getElementById("btn-sv");
   var orig = btn ? btn.innerHTML : "";
   if (btn) btn.innerHTML = "<span class=\"spinner\"></span> Enviando anexos…";
+  var erros = [];
   var promises = pendAtt.map(function(f) {
     return new Promise(function(resolve) {
       var reader = new FileReader();
@@ -727,9 +742,11 @@ async function saveAtt(key) {
           })
         }).then(function(r) { return r.json(); })
           .then(function(j) {
+            console.log('[saveAtt] resposta Drive:', JSON.stringify(j));
             if (j.success && j.anexo) driveAtts.push(j.anexo);
+            else { console.error('[saveAtt] erro:', j.error); erros.push(f.name); }
             resolve();
-          }).catch(resolve);
+          }).catch(function(err) { console.error('[saveAtt] fetch erro:', err); erros.push(f.name); resolve(); });
       };
       reader.readAsDataURL(f);
     });
@@ -738,9 +755,11 @@ async function saveAtt(key) {
   pendAtt = [];
   if (btn) btn.innerHTML = orig;
   renderAttList();
+  if (erros.length) alert("⚠ Falha ao enviar " + erros.length + " anexo(s): " + erros.join(", "));
 }
 
 function closePrev(){var ov=document.getElementById("prev-ov");if(ov)ov.style.display="none";}
+
 
 // ── DRAG & DROP COLUNAS
 function dstart(ev,el){el.classList.add("dragging");ev.dataTransfer.setData("text/plain",el.dataset.key||"");}
