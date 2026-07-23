@@ -520,8 +520,16 @@ function buildNav() {
     btnCot.onclick = function() { switchTab('cotacao'); };
     nav.appendChild(btnCot);
   }
+  if (!allowedKeys || allowedKeys.indexOf('financeiro') !== -1) {
+    var btnFin = document.createElement('button');
+    btnFin.className = 'nav-item'; btnFin.id = 'nav-financeiro';
+    btnFin.innerHTML = '<i class="ti ti-cash"></i><span>Financeiro</span>';
+    btnFin.onclick = function() { switchTab('financeiro'); };
+    nav.appendChild(btnFin);
+  }
   if (visibleAbas.length > 0) switchTab(visibleAbas[0].key);
   else if (!allowedKeys || allowedKeys.indexOf('cotacao') !== -1) switchTab('cotacao');
+  else if (!allowedKeys || allowedKeys.indexOf('financeiro') !== -1) switchTab('financeiro');
 }
 
 function switchTab(key) {
@@ -542,6 +550,13 @@ function switchTab(key) {
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
       '<iframe src="cotacao_comercial.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write"></iframe>';
+  } else if (key === 'financeiro') {
+    document.documentElement.style.setProperty('--accent', '#F5B800');
+    document.getElementById('top-title').textContent = 'Financeiro';
+    document.getElementById('top-sub').textContent = 'contas a pagar e a receber';
+    document.getElementById('fab').style.display = 'none';
+    document.getElementById('content').innerHTML =
+      '<iframe src="financeiro.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write"></iframe>';
   }
 }
 
