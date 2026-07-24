@@ -1257,6 +1257,16 @@ function calcValorEnfase(valor, tipoValor, adiantamentoPct){
 /* ── Helpers ── */
 function fmtMoeda(v){ return "R$\u00A0" + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtData(iso){ if(!iso) return "—"; var p=iso.split("-"); return p.length===3 ? (p[2]+"/"+p[1]+"/"+p[0]) : iso; }
+// Calcula a data de "hoje" no FUSO HORÁRIO LOCAL do navegador (não UTC).
+// new Date().toISOString() sempre converte pra UTC — no horário de Brasília
+// (UTC-3), isso faz "hoje" virar "amanhã" a partir das 21h, fazendo
+// lançamentos vencendo hoje sumirem da Fila do Dia e das badges depois
+// desse horário. Esta função usa getFullYear/getMonth/getDate, que já
+// respeitam o fuso do navegador do usuário.
+function hojeLocal_(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function diffDias(iso){ var hoje=new Date(); hoje.setHours(0,0,0,0); var v=new Date(iso+"T00:00:00"); return Math.round((v-hoje)/86400000); }
 function statusClass(status){
   if(status==='Pago'||status==='Recebido') return 'status-pg';
@@ -1331,7 +1341,7 @@ function renderDashboard(){
 /* ── Fila de Pagamentos do Dia (modo simplificado + dashboard) ── */
 function renderFila(filtro){
   filtro = (filtro||'').toLowerCase();
-  var hoje = new Date().toISOString().slice(0,10);
+  var hoje = hojeLocal_();
   var itens = getBase().filter(l=>l.tipo==='Pagar' && (l.status!=='Pago'&&l.status!=='Recebido') && (l.vencimento===hoje || diffDias(l.vencimento)<0));
   if(filtro) itens = itens.filter(l=>l.favorecido.toLowerCase().includes(filtro)||l.descricao.toLowerCase().includes(filtro));
   itens.sort((a,b)=>diffDias(a.vencimento)-diffDias(b.vencimento));
@@ -1509,7 +1519,7 @@ function quickSetStatus(id, novoStatus){
 function updateBadges(){
   var pendPagar = lancamentos.filter(l=>l.tipo==='Pagar'&&l.status==='A Pagar').length;
   var pendReceber = lancamentos.filter(l=>l.tipo==='Receber'&&l.status==='A Receber').length;
-  var hoje = new Date().toISOString().slice(0,10);
+  var hoje = hojeLocal_();
   var fila = lancamentos.filter(l=>(l.status==='A Pagar'||l.status==='A Receber')&&(l.vencimento===hoje||diffDias(l.vencimento)<0)).length;
 
   var bp=document.getElementById('badge-pagar'); if(pendPagar){bp.style.display='inline-block';bp.textContent=pendPagar;}else{bp.style.display='none';}
