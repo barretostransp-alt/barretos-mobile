@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js"></script>
 <style>
 :root {
   --gold:#F5B800; --gold-dim:rgba(245,184,0,.12); --gold-border:rgba(245,184,0,.3);
@@ -311,6 +312,9 @@ body.tema-claro .fila-card{background:#FFFFFF!important;border-color:#E2E8F0!imp
     <i class="ti ti-list-check"></i>Fila do Dia
     <span class="nav-badge warn" id="badge-fila" style="display:none"></span>
   </div>
+  <div class="nav-item" onclick="showView('historico')" data-view="historico">
+    <i class="ti ti-history"></i>Histórico
+  </div>
 
   <div class="sidebar-divider only-gestor"></div>
   <div class="sidebar-section only-gestor">Financeiro</div>
@@ -393,6 +397,15 @@ body.tema-claro .fila-card{background:#FFFFFF!important;border-color:#E2E8F0!imp
         <input class="filter-input" placeholder="Buscar favorecido ou descrição…" oninput="filterFila(this.value)" style="min-width:240px">
       </div>
       <div id="fila-list"></div>
+    </div>
+
+    <!-- ─── HISTÓRICO (visão pessoal, só leitura — pra quem só vê a Fila do Dia não se confundir e esquecer de solicitar algo) ─── -->
+    <div id="view-historico" class="view">
+      <div class="filter-bar">
+        <input class="filter-input" id="f-historico-texto" placeholder="Buscar favorecido ou descrição…" oninput="renderHistorico()" style="min-width:240px">
+      </div>
+      <div style="font-size:11px;color:var(--txt-dim);margin-bottom:10px" id="historico-sub"></div>
+      <div id="historico-list"></div>
     </div>
 
     <!-- ─── CONTAS A PAGAR ─── -->
@@ -1062,6 +1075,7 @@ function persist(){
 function renderAll(){
   renderDashboard();
   renderFila();
+  renderHistorico();
   renderTabela('pagar');
   renderTabela('receber');
   updateBadges();
@@ -1347,6 +1361,62 @@ function renderFila(filtro){
   }).join('');
 }
 function filterFila(v){ renderFila(v); }
+
+/* ── Histórico pessoal (só leitura) — pra quem só vê a Fila do Dia
+   conferir suas próprias solicitações e não esquecer/duplicar nada.
+   Identifica "suas" solicitações pelo campo Vendedor do card (importado
+   do kanban), comparando apenas o PRIMEIRO NOME com o nome da sessão
+   logada (o card do kanban costuma trazer só o primeiro nome).
+   No mobile a listagem usa cards (igual à Fila do Dia) em vez de tabela,
+   pra não precisar rolar a tela de lado num celular. ── */
+function getUsuarioAtual_(){
+  try{
+    var raw = sessionStorage.getItem('barretos_user') || localStorage.getItem('barretos_user');
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function renderHistorico(){
+  var user = getUsuarioAtual_();
+  var nome = user ? (user.nome || user.login || '').trim() : '';
+  var sub = document.getElementById('historico-sub');
+  var el = document.getElementById('historico-list');
+
+  if(!nome){
+    sub.textContent = 'Não foi possível identificar seu usuário nesta sessão.';
+    el.innerHTML = `<div class="empty-state"><i class="ti ti-user-question"></i><strong>Faça login pra ver seu histórico</strong></div>`;
+    return;
+  }
+  var primeiroNome = nome.split(/\s+/)[0] || '';
+  sub.textContent = 'Solicitações vinculadas a "'+primeiroNome+'" (pelo campo Vendedor do card do kanban)';
+
+  var texto = (document.getElementById('f-historico-texto').value||'').toLowerCase();
+  var nomeNorm = primeiroNome.toLowerCase();
+  var itens = lancamentos.filter(function(l){
+    if(l.tipo!=='Pagar') return false;
+    var vendedorPrimeiroNome = (l.vendedor||'').trim().split(/\s+/)[0] || '';
+    if(vendedorPrimeiroNome.toLowerCase() !== nomeNorm) return false;
+    if(texto && !(l.favorecido.toLowerCase().includes(texto)||l.descricao.toLowerCase().includes(texto))) return false;
+    return true;
+  });
+  itens.sort((a,b)=>b.vencimento.localeCompare(a.vencimento)); // mais recente primeiro
+
+  if(!itens.length){
+    el.innerHTML = `<div class="empty-state"><i class="ti ti-history"></i><strong>Nenhuma solicitação sua encontrada</strong></div>`;
+    return;
+  }
+  el.innerHTML = itens.map(function(l){
+    var valorPagar = calcValorEnfase(l.valor, l.tipoValor, l.adiantamento);
+    return `<div class="fila-card" style="cursor:default">
+      <div class="fila-card-icon" style="background:var(--red-dim)">
+        <i class="ti ti-arrow-up-circle" style="color:var(--red)"></i></div>
+      <div class="fila-card-main"><strong>${l.favorecido}</strong>
+        <span style="display:block">${l.descricao} · ${fmtData(l.vencimento)}</span>
+        <span class="badge ${l.status==='Pago'?'badge-green':'badge-orange'}" style="margin-top:4px">${l.status}</span></div>
+      <div class="fila-card-val" style="color:var(--txt)">${fmtMoeda(valorPagar)}</div>
+    </div>`;
+  }).join('');
+}
 
 /* ── Tabelas Contas a Pagar / Receber ── */
 function getLinhasFiltradas(tipo){
@@ -1901,12 +1971,30 @@ async function lerFaturaPDF(){
       var content = await page.getTextContent();
       textoCompleto += reconstruirTextoVisual_(content.items) + '\n';
     }
-    var campos = {};
     if(textoCompleto.trim().length < 40){
-      statusEl.innerHTML = '<span class="txt-red">Este PDF parece ser uma imagem escaneada (sem texto selecionável) — não dá pra ler automaticamente. Preencha manualmente.</span>';
-      return;
+      // Sem camada de texto — provavelmente uma imagem/print/digitalização.
+      // Antes de desistir, tenta OCR (lê a página como imagem).
+      if(typeof Tesseract === 'undefined'){
+        statusEl.innerHTML = '<span class="txt-red">Este PDF parece ser uma imagem escaneada e a biblioteca de OCR não carregou. Preencha manualmente.</span>';
+        return;
+      }
+      try{
+        var bufferOcr = await arquivo.arrayBuffer();
+        textoCompleto = await extrairTextoFaturaViaOcr_(bufferOcr, function(pagina, total, parte, partes){
+          var sufixoParte = partes>1 ? (' (parte '+parte+'/'+partes+')') : '';
+          statusEl.innerHTML = '<span class="spinner" style="width:11px;height:11px;display:inline-block;vertical-align:middle;margin-right:4px"></span> PDF parece ser uma imagem — aplicando OCR (página '+pagina+'/'+total+sufixoParte+')…';
+        });
+      }catch(ocrErr){
+        statusEl.innerHTML = '<span class="txt-red">Não consegui aplicar OCR neste PDF ('+(ocrErr.message||'falha desconhecida')+'). Preencha manualmente.</span>';
+        return;
+      }
+      if(textoCompleto.trim().length < 20){
+        statusEl.innerHTML = '<span class="txt-red">Mesmo com OCR, não consegui extrair texto legível deste PDF. Preencha manualmente.</span>';
+        return;
+      }
     }
-    campos = parseDuplicataTexto(textoCompleto);
+
+    var campos = parseDuplicataTexto(textoCompleto);
     aplicarCamposFatura(campos);
     var reconhecidos = Object.keys(campos).filter(k=>campos[k]).length;
     statusEl.innerHTML = reconhecidos
@@ -1915,6 +2003,55 @@ async function lerFaturaPDF(){
   }catch(e){
     statusEl.innerHTML = '<span class="txt-red">Erro ao ler o PDF ('+(e.message||'falha desconhecida')+'). Preencha manualmente.</span>';
   }
+}
+
+// Fallback de OCR para PDFs sem camada de texto (ex: digitalizados/prints).
+// Cuidado especial: alguns documentos chegam como um único print de tela
+// MUITO comprido (proporção fora do padrão A4) — escalar isso num canvas só
+// pode ultrapassar o limite de tamanho que os navegadores aceitam (Chrome
+// trava perto de 16384px numa dimensão), fazendo o OCR falhar silenciosamente.
+// Por isso a escala é calculada a partir do tamanho real da página, e
+// páginas que mesmo assim ficariam altas demais são processadas em fatias.
+async function extrairTextoFaturaViaOcr_(arrayBuffer, onProgress){
+  var pdf = await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+  var maxPages = Math.min(pdf.numPages, 4);
+  var LIMITE_SEGURO = 3500; // bem abaixo do limite dos navegadores, com folga
+  var texto = '';
+  for(var i=1; i<=maxPages; i++){
+    var page = await pdf.getPage(i);
+    var base = page.getViewport({scale:1});
+
+    var scale = Math.min(2.2, LIMITE_SEGURO/base.width, LIMITE_SEGURO/base.height);
+    scale = Math.max(scale, 0.4);
+    var viewport = page.getViewport({scale:scale});
+
+    if(viewport.height <= LIMITE_SEGURO){
+      if(onProgress) onProgress(i, maxPages, 1, 1);
+      var canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      var ctx = canvas.getContext('2d');
+      await page.render({canvasContext: ctx, viewport: viewport}).promise;
+      var resultado = await Tesseract.recognize(canvas, 'por');
+      texto += resultado.data.text + '\n';
+    } else {
+      var partes = Math.min(Math.ceil(viewport.height/LIMITE_SEGURO), 10);
+      for(var p2=0; p2<partes; p2++){
+        if(onProgress) onProgress(i, maxPages, p2+1, partes);
+        var offsetY = p2*LIMITE_SEGURO;
+        var alturaParte = Math.min(LIMITE_SEGURO, viewport.height-offsetY);
+        var canvas2 = document.createElement('canvas');
+        canvas2.width = viewport.width;
+        canvas2.height = alturaParte;
+        var ctx2 = canvas2.getContext('2d');
+        ctx2.translate(0, -offsetY);
+        await page.render({canvasContext: ctx2, viewport: viewport}).promise;
+        var resultado2 = await Tesseract.recognize(canvas2, 'por');
+        texto += resultado2.data.text + '\n';
+      }
+    }
+  }
+  return texto;
 }
 
 // pdf.js entrega os itens de texto na ordem em que foram desenhados no PDF,
@@ -2196,6 +2333,7 @@ function showView(name){
   var titles = {
     dashboard: ['ti-layout-dashboard','Dashboard','Visão geral financeira'],
     fila: ['ti-list-check','Fila do Dia','Lançamentos vencendo hoje ou atrasados'],
+    historico: ['ti-history','Histórico','Suas solicitações — só consulta'],
     pagar: ['ti-arrow-up-circle','Contas a Pagar','Fornecedores, fretes e despesas'],
     receber: ['ti-arrow-down-circle','Contas a Receber','Clientes e faturamento']
   };
@@ -2203,6 +2341,7 @@ function showView(name){
   document.getElementById('topbar-icon').className = 'ti '+t[0];
   document.getElementById('topbar-title').textContent = t[1];
   document.getElementById('topbar-sub').textContent = t[2];
+  if(name==='historico') renderHistorico();
   toggleSidebarMobile(false); // ao trocar de aba no mobile, a gaveta fecha sozinha
 }
 
