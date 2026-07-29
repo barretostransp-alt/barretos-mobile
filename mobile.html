@@ -34,9 +34,11 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
 .btn-icon{background:none;border:none;color:var(--txt-dim);cursor:pointer;font-size:20px;padding:4px;}
 .content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
 .bottom-nav{background:var(--surface);border-top:1px solid var(--border);
-  display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0);}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;
-  padding:8px 4px 6px;cursor:pointer;color:var(--txt-dim);font-size:9px;
+  display:flex;flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.bottom-nav::-webkit-scrollbar{display:none;}
+.nav-item{flex:0 0 auto;min-width:64px;display:flex;flex-direction:column;align-items:center;
+  padding:8px 8px 6px;cursor:pointer;color:var(--txt-dim);font-size:9px;
   font-weight:700;letter-spacing:.03em;gap:3px;border:none;background:none;transition:color .15s;}
 .nav-item i{font-size:20px;}
 .nav-item.active{color:var(--accent);}
@@ -82,8 +84,16 @@ body.tema-claro .topbar { background:#161922 !important; border-bottom-color:#25
 body.tema-claro .topbar-title, body.tema-claro .topbar-user { color:#E8E9F0 !important; }
 body.tema-claro .topbar-sub { color:#9CA3AF !important; }
 body.tema-claro .btn-icon { color:#9CA3AF !important; }
-body.tema-claro .bottom-nav { background:#FFFFFF !important; border-top-color:#E2E6ED !important; }
-body.tema-claro .nav-item { color:#6B7280 !important; }
+body.tema-claro .bottom-nav {
+  background:#FFFFFF !important; border-top-color:#E2E6ED !important;
+  display:flex !important; visibility:visible !important; opacity:1 !important;
+  pointer-events:auto !important; position:relative; z-index:50;
+}
+body.tema-claro .nav-item {
+  color:#6B7280 !important; visibility:visible !important; opacity:1 !important;
+  pointer-events:auto !important;
+}
+body.tema-claro .nav-item i { color:inherit !important; }
 body.tema-claro .nav-item.active { color:var(--gold) !important; }
 body.tema-claro .card-item { background:#FFFFFF !important; border-color:#E2E6ED !important; }
 body.tema-claro .ci-tag { background:#F5F7FA !important; }
@@ -155,11 +165,45 @@ body.tema-claro .modal-sheet { background:#FFFFFF !important; }
 .spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);
   border-radius:50%;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── SIDEBAR MOBILE — navegação principal, igual ao padrão do desktop
+   (seções agrupadas), como um drawer que desliza por cima do conteúdo.
+   O menu de baixo continua existindo, como atalho rápido rolável. ── */
+.mobile-sidebar{
+  position:fixed;top:0;bottom:0;left:0;width:78%;max-width:300px;
+  background:var(--surface);border-right:1px solid var(--border);
+  z-index:300;transform:translateX(-100%);transition:transform .22s ease;
+  display:flex;flex-direction:column;overflow-y:auto;
+  padding-top:env(safe-area-inset-top,0);
+  padding-bottom:env(safe-area-inset-bottom,0);
+}
+.mobile-sidebar.open{transform:translateX(0);box-shadow:16px 0 40px rgba(0,0,0,.5);}
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:299;}
+.sidebar-backdrop.open{display:block;}
+.sidebar-top{display:flex;align-items:center;gap:10px;padding:18px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sidebar-logo{width:38px;height:38px;border-radius:9px;object-fit:cover;flex-shrink:0;}
+.sidebar-brand{font-weight:800;font-size:14px;color:var(--txt);}
+.sidebar-user-name{font-size:11px;color:var(--txt-dim);margin-top:1px;}
+.sidebar-nav-body{padding:10px 8px;flex:1;}
+.sidebar-section-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--txt-dim);padding:14px 10px 6px;}
+.sidebar-item{display:flex;align-items:center;gap:11px;width:100%;padding:11px 10px;
+  border-radius:9px;border:none;background:none;color:var(--txt);font-size:14px;
+  font-family:'DM Sans',sans-serif;cursor:pointer;text-align:left;transition:background .15s;}
+.sidebar-item i{font-size:19px;color:var(--txt-dim);flex-shrink:0;width:20px;text-align:center;}
+.sidebar-item:active{background:rgba(255,255,255,.06);}
+.sidebar-item.active{background:var(--gold-dim,rgba(245,184,0,.12));color:var(--accent);}
+.sidebar-item.active i{color:var(--accent);}
+body.tema-claro .mobile-sidebar{background:#FFFFFF !important;border-right-color:#E2E6ED !important;}
+body.tema-claro .sidebar-item{color:#111827 !important;}
+body.tema-claro .sidebar-item i{color:#6B7280 !important;}
+body.tema-claro .sidebar-item:active{background:rgba(0,0,0,.04) !important;}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="topbar">
+    <button class="btn-icon" id="btn-menu" onclick="toggleSidebarMobile()" title="Menu" aria-label="Abrir menu"><i class="ti ti-menu-2"></i></button>
     <div class="topbar-info">
       <div class="topbar-title" id="top-title">Kanbans</div>
       <div class="topbar-sub" id="top-sub">carregando...</div>
@@ -168,6 +212,19 @@ body.tema-claro .modal-sheet { background:#FFFFFF !important; }
     <button class="btn-icon" id="btn-tema" onclick="alternarTema()" title="Alternar tema"><i class="ti ti-moon" id="ico-tema"></i></button>
     <button class="btn-icon" onclick="logout()"><i class="ti ti-logout"></i></button>
   </div>
+
+  <aside class="mobile-sidebar" id="mobile-sidebar">
+    <div class="sidebar-top">
+      <img src="icon-192.png" alt="Barreto's" class="sidebar-logo">
+      <div>
+        <div class="sidebar-brand">Barreto's</div>
+        <div class="sidebar-user-name" id="sidebar-user-name">—</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav-body" id="sidebar-nav-body"></nav>
+  </aside>
+  <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebarMobile(false)"></div>
+
   <div class="content" id="content">
     <div class="ptr-indicator" id="ptr-indicator">
       <i class="ptr-arrow ti ti-arrow-down" id="ptr-arrow"></i>
@@ -339,6 +396,8 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!raw) { window.location.href = 'mobile_login.html'; return; }
   try { user = JSON.parse(raw); } catch(e) { window.location.href = 'mobile_login.html'; return; }
   document.getElementById('top-user').textContent = (user.nome||'').split(' ')[0].toUpperCase();
+  var sideName = document.getElementById('sidebar-user-name');
+  if (sideName) sideName.textContent = user.nome || '';
   initPullToRefresh();
   fetchPermissoes();
 });
@@ -558,71 +617,92 @@ async function fetchPermissoes() {
   buildNav();
 }
 
+// ── Estrutura única de navegação — alimenta o menu de baixo (lista plana,
+// rolável) e o sidebar novo (agrupado por seção, igual ao padrão do
+// desktop). Kanbans entram dinamicamente a partir de ABAS_CONFIG.
+function getNavSections() {
+  var kanbanItems = ABAS_CONFIG
+    .filter(function(a) { return !allowedKeys || allowedKeys.indexOf(a.key) !== -1; })
+    .map(function(a) { return { key: a.key, label: a.label, icon: 'ti-columns' }; });
+  return [
+    { section: null, items: [
+      { key: 'inicio', label: 'Início', icon: 'ti-home', always: true }
+    ]},
+    { section: 'Comercial', items: [
+      { key: 'cotacao', label: 'Cotação', icon: 'ti-calculator' }
+    ]},
+    { section: 'Financeiro', items: [
+      { key: 'financeiro', label: 'Financeiro', icon: 'ti-cash' },
+      { key: 'faturamento', label: 'Faturamento', icon: 'ti-file-invoice' },
+      { key: 'conciliacao', label: 'Conciliação', icon: 'ti-building-bank' }
+    ]},
+    { section: 'Operacional', items: [
+      { key: 'frota', label: 'Frota', icon: 'ti-car' }
+    ].concat(kanbanItems) }
+  ];
+}
+
+function itemVisivel(item) {
+  return item.always || !allowedKeys || allowedKeys.indexOf(item.key) !== -1;
+}
+
 function buildNav() {
+  var sections = getNavSections();
+
+  // ── Menu de baixo: lista plana, rolável na horizontal ──
   var nav = document.getElementById('bottom-nav');
   nav.innerHTML = '';
-  if (!allowedKeys || allowedKeys.indexOf('inicio') !== -1) {
-    var btnIni = document.createElement('button');
-    btnIni.className = 'nav-item'; btnIni.id = 'nav-inicio';
-    btnIni.innerHTML = '<i class="ti ti-home"></i><span>Início</span>';
-    btnIni.onclick = function() { switchTab('inicio'); };
-    nav.appendChild(btnIni);
-  }
-  var visibleAbas = ABAS_CONFIG.filter(function(a) {
-    return !allowedKeys || allowedKeys.indexOf(a.key) !== -1;
+  sections.forEach(function(sec) {
+    sec.items.filter(itemVisivel).forEach(function(item) {
+      var btn = document.createElement('button');
+      btn.className = 'nav-item'; btn.id = 'nav-' + item.key;
+      btn.innerHTML = '<i class="ti ' + item.icon + '"></i><span>' + item.label + '</span>';
+      btn.onclick = function() { switchTab(item.key); };
+      nav.appendChild(btn);
+    });
   });
-  visibleAbas.forEach(function(a) {
-    var btn = document.createElement('button');
-    btn.className = 'nav-item'; btn.id = 'nav-' + a.key;
-    btn.innerHTML = '<i class="ti ti-columns"></i><span>' + a.label + '</span>';
-    btn.onclick = function() { switchTab(a.key); };
-    nav.appendChild(btn);
-  });
-  if (!allowedKeys || allowedKeys.indexOf('cotacao') !== -1) {
-    var btnCot = document.createElement('button');
-    btnCot.className = 'nav-item'; btnCot.id = 'nav-cotacao';
-    btnCot.innerHTML = '<i class="ti ti-calculator"></i><span>Cotação</span>';
-    btnCot.onclick = function() { switchTab('cotacao'); };
-    nav.appendChild(btnCot);
+
+  // ── Sidebar: agrupado por seção, igual ao padrão do desktop ──
+  var side = document.getElementById('sidebar-nav-body');
+  if (side) {
+    side.innerHTML = '';
+    sections.forEach(function(sec) {
+      var visibleItems = sec.items.filter(itemVisivel);
+      if (!visibleItems.length) return;
+      if (sec.section) {
+        var lbl = document.createElement('div');
+        lbl.className = 'sidebar-section-lbl';
+        lbl.textContent = sec.section;
+        side.appendChild(lbl);
+      }
+      visibleItems.forEach(function(item) {
+        var btn = document.createElement('button');
+        btn.className = 'sidebar-item'; btn.id = 'side-' + item.key;
+        btn.innerHTML = '<i class="ti ' + item.icon + '"></i><span>' + item.label + '</span>';
+        btn.onclick = function() { switchTab(item.key); toggleSidebarMobile(false); };
+        side.appendChild(btn);
+      });
+    });
   }
-  if (!allowedKeys || allowedKeys.indexOf('financeiro') !== -1) {
-    var btnFin = document.createElement('button');
-    btnFin.className = 'nav-item'; btnFin.id = 'nav-financeiro';
-    btnFin.innerHTML = '<i class="ti ti-cash"></i><span>Financeiro</span>';
-    btnFin.onclick = function() { switchTab('financeiro'); };
-    nav.appendChild(btnFin);
-  }
-  if (!allowedKeys || allowedKeys.indexOf('conciliacao') !== -1) {
-    var btnConc = document.createElement('button');
-    btnConc.className = 'nav-item'; btnConc.id = 'nav-conciliacao';
-    btnConc.innerHTML = '<i class="ti ti-building-bank"></i><span>Conciliação</span>';
-    btnConc.onclick = function() { switchTab('conciliacao'); };
-    nav.appendChild(btnConc);
-  }
-  if (!allowedKeys || allowedKeys.indexOf('faturamento') !== -1) {
-    var btnFat = document.createElement('button');
-    btnFat.className = 'nav-item'; btnFat.id = 'nav-faturamento';
-    btnFat.innerHTML = '<i class="ti ti-file-invoice"></i><span>Faturamento</span>';
-    btnFat.onclick = function() { switchTab('faturamento'); };
-    nav.appendChild(btnFat);
-  }
-  if (!allowedKeys || allowedKeys.indexOf('frota') !== -1) {
-    var btnFrota = document.createElement('button');
-    btnFrota.className = 'nav-item'; btnFrota.id = 'nav-frota';
-    btnFrota.innerHTML = '<i class="ti ti-car"></i><span>Frota</span>';
-    btnFrota.onclick = function() { switchTab('frota'); };
-    nav.appendChild(btnFrota);
-  }
-  if (!allowedKeys || allowedKeys.indexOf('inicio') !== -1) switchTab('inicio');
-  else if (visibleAbas.length > 0) switchTab(visibleAbas[0].key);
-  else if (!allowedKeys || allowedKeys.indexOf('cotacao') !== -1) switchTab('cotacao');
-  else if (!allowedKeys || allowedKeys.indexOf('financeiro') !== -1) switchTab('financeiro');
+
+  switchTab('inicio');
+}
+
+function toggleSidebarMobile(forceOpen) {
+  var sb = document.getElementById('mobile-sidebar');
+  var bd = document.getElementById('sidebar-backdrop');
+  var abrir = forceOpen !== undefined ? forceOpen : !sb.classList.contains('open');
+  sb.classList.toggle('open', abrir);
+  bd.classList.toggle('open', abrir);
 }
 
 function switchTab(key) {
   currentTab = key;
   document.querySelectorAll('.nav-item').forEach(function(el) {
     el.classList.toggle('active', el.id === 'nav-' + key);
+  });
+  document.querySelectorAll('.sidebar-item').forEach(function(el) {
+    el.classList.toggle('active', el.id === 'side-' + key);
   });
   var aba = ABAS_CONFIG.find(function(a) { return a.key === key; });
   if (key === 'inicio') {
