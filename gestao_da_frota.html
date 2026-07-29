@@ -166,12 +166,35 @@ select.form-input option{background:var(--surface2);color:var(--txt)}
   .sidebar{position:fixed;left:calc(-1 * var(--sidebar-w));top:0;bottom:0;z-index:200;transition:left .2s}
   .sidebar.mobile-open{left:0;box-shadow:12px 0 32px rgba(0,0,0,.5)}
   .topbar{padding:0 14px}
+  .topbar-right .btn span{display:none}
+  .topbar-right .btn i{margin:0}
   .content{padding:14px}
   .kpi-grid{grid-template-columns:1fr 1fr}
   .form-grid-2,.form-grid-3{grid-template-columns:1fr}
   .grid-2,.grid-3{grid-template-columns:1fr}
   .panel{overflow-x:auto}
   [style*="100px 1fr 1fr 1fr 1fr"]{min-width:520px}
+  .tbl{min-width:820px}
+  .resumo-tbl{min-width:560px}
+
+  /* Modal vira bottom sheet — desliza de baixo, cantos arredondados só
+     em cima, largura toda (mais fácil de usar no celular) */
+  .modal-overlay{align-items:flex-end;padding:0}
+  .modal{max-width:100%;width:100%;border-radius:16px 16px 0 0;
+    max-height:92vh;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0));}
+  .modal-footer{position:sticky;bottom:0;background:var(--surface);flex-direction:column;}
+  .modal-footer .btn{width:100%;justify-content:center;padding:11px 14px;}
+
+  /* Painel lateral vira full-width em vez de largura fixa */
+  .side-panel{width:100% !important;}
+  .side-panel-footer{flex-direction:column;}
+  .side-panel-footer .btn{width:100%;justify-content:center;padding:11px 14px;}
+
+  /* Inputs em 16px pra não disparar o zoom automático do iOS ao focar */
+  input, select, textarea{font-size:16px !important;}
+
+  /* Alvos de toque maiores no menu lateral */
+  .nav-item{padding:10px 12px;font-size:13px;}
 }
 .txt-right{text-align:right}
 .txt-mono{font-family:'JetBrains Mono',monospace;font-size:12px}
