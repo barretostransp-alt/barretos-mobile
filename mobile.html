@@ -804,7 +804,7 @@ function switchTab(key) {
     document.getElementById('top-sub').textContent = 'extratos, conciliação e DRE';
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
-      '<iframe src="conciliacao_bancaria.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+      '<iframe src="conciliacao_bancaria_mobile.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
   } else if (key === 'faturamento') {
     document.documentElement.style.setProperty('--accent', '#F5B800');
     document.getElementById('top-title').textContent = 'Faturamento';
