@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="theme-color" content="#0E0F12">
 <meta name="apple-mobile-web-app-title" content="Barreto's">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json?v=2">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Barreto's</title>
@@ -198,6 +198,21 @@ body.tema-claro .mobile-sidebar{background:#FFFFFF !important;border-right-color
 body.tema-claro .sidebar-item{color:#111827 !important;}
 body.tema-claro .sidebar-item i{color:#6B7280 !important;}
 body.tema-claro .sidebar-item:active{background:rgba(0,0,0,.04) !important;}
+
+/* ── SUBNAV DA COTAÇÃO — Calculadora/Histórico/OC/Aprovação, só aparece
+   quando a aba Cotação está ativa; substitui as abas internas que a
+   própria cotação escondeu no mobile. Fica logo acima do menu de baixo. ── */
+.cotacao-subnav{background:var(--surface);border-top:1px solid var(--border);
+  display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-shrink:0;}
+.cotacao-subnav::-webkit-scrollbar{display:none;}
+.cotacao-subnav-btn{flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  padding:9px 16px;font-size:12px;font-weight:700;color:var(--txt-dim);
+  border:none;background:none;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;}
+.cotacao-subnav-btn i{font-size:15px;}
+.cotacao-subnav-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+body.tema-claro .cotacao-subnav{background:#FFFFFF !important;border-top-color:#E2E6ED !important;}
+body.tema-claro .cotacao-subnav-btn{color:#6B7280 !important;}
+body.tema-claro .cotacao-subnav-btn.active{color:var(--accent) !important;}
 </style>
 </head>
 <body>
@@ -236,6 +251,7 @@ body.tema-claro .sidebar-item:active{background:rgba(0,0,0,.04) !important;}
   <!-- Input oculto para seleção de arquivos -->
   <input type="file" id="file-input" multiple accept="*/*"
     style="display:none" onchange="onFilesSelected(this.files)">
+  <div class="cotacao-subnav" id="cotacao-subnav" style="display:none"></div>
   <div class="bottom-nav" id="bottom-nav"></div>
 </div>
 
@@ -628,6 +644,9 @@ function getNavSections() {
     { section: null, items: [
       { key: 'inicio', label: 'Início', icon: 'ti-home', always: true }
     ]},
+    { section: 'Geral', items: [
+      { key: 'calendario', label: 'Calendário', icon: 'ti-calendar', always: true }
+    ]},
     { section: 'Comercial', items: [
       { key: 'cotacao', label: 'Cotação', icon: 'ti-calculator' }
     ]},
@@ -696,6 +715,46 @@ function toggleSidebarMobile(forceOpen) {
   bd.classList.toggle('open', abrir);
 }
 
+// Normaliza nome/login pra comparação tolerante (mesmo padrão do shell
+// desktop e da cotação): minúsculas, sem acento, pontuação vira espaço.
+function normNomeLogin_(s){
+  return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+}
+function contemTodosTokens_(base, tokens){
+  return tokens.every(function(t){ return base.indexOf(t) !== -1; });
+}
+function ehAprovadorMobile(){
+  var base = normNomeLogin_((user && user.nome)||'') + ' ' + normNomeLogin_((user && user.login)||'');
+  return contemTodosTokens_(base, ['filipe'])
+      || contemTodosTokens_(base, ['gabriel','pinheiro'])
+      || contemTodosTokens_(base, ['diego','florido']);
+}
+
+var _cotacaoSubTab = 'calc';
+function buildCotacaoSubnav(){
+  var nav = document.getElementById('cotacao-subnav');
+  var itens = [
+    { key:'calc', label:'Calculadora', icon:'ti-calculator' },
+    { key:'hist', label:'Histórico', icon:'ti-history' },
+    { key:'oc', label:'Ordem de Coleta', icon:'ti-clipboard-list' }
+  ];
+  if (ehAprovadorMobile()) itens.push({ key:'aprov', label:'Aprovação', icon:'ti-clipboard-check' });
+  nav.innerHTML = '';
+  itens.forEach(function(item){
+    var btn = document.createElement('button');
+    btn.className = 'cotacao-subnav-btn' + (item.key === _cotacaoSubTab ? ' active' : '');
+    btn.innerHTML = '<i class="ti ' + item.icon + '"></i>' + item.label;
+    btn.onclick = function(){
+      _cotacaoSubTab = item.key;
+      document.querySelectorAll('.cotacao-subnav-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      var frame = document.querySelector('#content iframe');
+      if (frame) frame.contentWindow.postMessage({ type:'cotacao_switch_tab', tab:item.key }, '*');
+    };
+    nav.appendChild(btn);
+  });
+}
+
 function switchTab(key) {
   currentTab = key;
   document.querySelectorAll('.nav-item').forEach(function(el) {
@@ -712,6 +771,13 @@ function switchTab(key) {
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
       '<iframe src="inicio.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+  } else if (key === 'calendario') {
+    document.documentElement.style.setProperty('--accent', '#F5B800');
+    document.getElementById('top-title').textContent = 'Calendário';
+    document.getElementById('top-sub').textContent = 'eventos e compromissos';
+    document.getElementById('fab').style.display = 'none';
+    document.getElementById('content').innerHTML =
+      '<iframe src="calendario.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
   } else if (aba) {
     document.documentElement.style.setProperty('--accent', aba.color);
     document.getElementById('top-title').textContent = aba.label;
@@ -722,6 +788,7 @@ function switchTab(key) {
     document.getElementById('top-title').textContent = 'Cotação Comercial';
     document.getElementById('top-sub').textContent = 'simulação de frete';
     document.getElementById('fab').style.display = 'none';
+    _cotacaoSubTab = 'calc';
     document.getElementById('content').innerHTML =
       '<iframe src="cotacao_comercial.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
   } else if (key === 'financeiro') {
@@ -752,6 +819,17 @@ function switchTab(key) {
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
       '<iframe src="gestao_da_frota.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+  }
+
+  // Subnav da Cotação (Calculadora/Histórico/OC/Aprovação) só aparece
+  // quando essa aba está ativa — substitui as abas que a própria
+  // cotação escondeu no mobile
+  var subnav = document.getElementById('cotacao-subnav');
+  if (key === 'cotacao') {
+    buildCotacaoSubnav();
+    subnav.style.display = 'flex';
+  } else {
+    subnav.style.display = 'none';
   }
 }
 
