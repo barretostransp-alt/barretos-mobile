@@ -561,6 +561,13 @@ async function fetchPermissoes() {
 function buildNav() {
   var nav = document.getElementById('bottom-nav');
   nav.innerHTML = '';
+  if (!allowedKeys || allowedKeys.indexOf('inicio') !== -1) {
+    var btnIni = document.createElement('button');
+    btnIni.className = 'nav-item'; btnIni.id = 'nav-inicio';
+    btnIni.innerHTML = '<i class="ti ti-home"></i><span>Início</span>';
+    btnIni.onclick = function() { switchTab('inicio'); };
+    nav.appendChild(btnIni);
+  }
   var visibleAbas = ABAS_CONFIG.filter(function(a) {
     return !allowedKeys || allowedKeys.indexOf(a.key) !== -1;
   });
@@ -592,7 +599,22 @@ function buildNav() {
     btnConc.onclick = function() { switchTab('conciliacao'); };
     nav.appendChild(btnConc);
   }
-  if (visibleAbas.length > 0) switchTab(visibleAbas[0].key);
+  if (!allowedKeys || allowedKeys.indexOf('faturamento') !== -1) {
+    var btnFat = document.createElement('button');
+    btnFat.className = 'nav-item'; btnFat.id = 'nav-faturamento';
+    btnFat.innerHTML = '<i class="ti ti-file-invoice"></i><span>Faturamento</span>';
+    btnFat.onclick = function() { switchTab('faturamento'); };
+    nav.appendChild(btnFat);
+  }
+  if (!allowedKeys || allowedKeys.indexOf('frota') !== -1) {
+    var btnFrota = document.createElement('button');
+    btnFrota.className = 'nav-item'; btnFrota.id = 'nav-frota';
+    btnFrota.innerHTML = '<i class="ti ti-car"></i><span>Frota</span>';
+    btnFrota.onclick = function() { switchTab('frota'); };
+    nav.appendChild(btnFrota);
+  }
+  if (!allowedKeys || allowedKeys.indexOf('inicio') !== -1) switchTab('inicio');
+  else if (visibleAbas.length > 0) switchTab(visibleAbas[0].key);
   else if (!allowedKeys || allowedKeys.indexOf('cotacao') !== -1) switchTab('cotacao');
   else if (!allowedKeys || allowedKeys.indexOf('financeiro') !== -1) switchTab('financeiro');
 }
@@ -603,7 +625,14 @@ function switchTab(key) {
     el.classList.toggle('active', el.id === 'nav-' + key);
   });
   var aba = ABAS_CONFIG.find(function(a) { return a.key === key; });
-  if (aba) {
+  if (key === 'inicio') {
+    document.documentElement.style.setProperty('--accent', '#F5B800');
+    document.getElementById('top-title').textContent = 'Início';
+    document.getElementById('top-sub').textContent = 'visão geral do dia';
+    document.getElementById('fab').style.display = 'none';
+    document.getElementById('content').innerHTML =
+      '<iframe src="inicio.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+  } else if (aba) {
     document.documentElement.style.setProperty('--accent', aba.color);
     document.getElementById('top-title').textContent = aba.label;
     document.getElementById('fab').style.display = 'flex';
@@ -629,6 +658,20 @@ function switchTab(key) {
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
       '<iframe src="conciliacao_bancaria.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+  } else if (key === 'faturamento') {
+    document.documentElement.style.setProperty('--accent', '#F5B800');
+    document.getElementById('top-title').textContent = 'Faturamento';
+    document.getElementById('top-sub').textContent = 'por CT-e';
+    document.getElementById('fab').style.display = 'none';
+    document.getElementById('content').innerHTML =
+      '<iframe src="faturamento.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+  } else if (key === 'frota') {
+    document.documentElement.style.setProperty('--accent', '#F5B800');
+    document.getElementById('top-title').textContent = 'Gestão da Frota';
+    document.getElementById('top-sub').textContent = 'veículos, motoristas e despesas';
+    document.getElementById('fab').style.display = 'none';
+    document.getElementById('content').innerHTML =
+      '<iframe src="gestao_da_frota.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
   }
 }
 
