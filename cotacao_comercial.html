@@ -973,7 +973,7 @@
   ::-webkit-scrollbar-thumb { background: var(--charcoal-border); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: #555; }
 
-  @media (max-width: 760px) {
+  @media (max-width: 900px) {
     /* Layout: uma coluna, form em cima */
     .app-body {
       grid-template-columns: 1fr;
@@ -1004,26 +1004,12 @@
     #mob-toggle-btn {
       display: flex !important;
     }
-    /* Esconde só o botão de config (Sheets) e os divisores decorativos —
-       as abas (Calculadora/Histórico/Ordem de Coleta/Aprovação) continuam
-       visíveis, só ficam compactas e roláveis na horizontal */
-    .btn-config, .header-divider {
+    /* Esconde as abas do header e o botão de config no mobile — a
+       navegação entre Calculadora/Histórico/OC/Aprovação passa a vir de
+       fora (barra do mobile.html), via postMessage — ver listener
+       'cotacao_switch_tab' mais abaixo no script. */
+    .nav-tabs, .btn-config, .header-divider {
       display: none !important;
-    }
-    .nav-tabs {
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      flex-shrink: 1;
-      max-width: 100%;
-      margin-left: 0;
-    }
-    .nav-tabs::-webkit-scrollbar { display: none; }
-    .nav-tab {
-      padding: 6px 10px;
-      font-size: 11px;
-      white-space: nowrap;
-      flex-shrink: 0;
     }
     /* Header compacto */
     .app-header {
@@ -4568,6 +4554,19 @@ setTimeout(()=>{
   const url=window._sheetsWebAppUrl||SHEETS_WEBAPP_URL;
   if(url) fetch(url).then(r=>r.json()).then(j=>{if(j.rows&&j.rows.length){histData=j.rows;const b=document.getElementById('hist-badge');if(b){b.textContent=j.rows.length;b.style.display='inline';}}}).catch(()=>{});
 },800);
+
+/* ---- NAVEGAÇÃO VINDA DE FORA (mobile.html) ----
+   No celular, as abas Calculadora/Histórico/Ordem de Coleta/Aprovação
+   ficam escondidas aqui dentro (ver CSS acima) e passam a ser controladas
+   por uma barrinha no shell mobile, que manda essa mensagem pra trocar
+   de aba. A aba "aprov" só é aceita se o usuário logado for realmente
+   um dos aprovadores — preserva a mesma regra de acesso de sempre. */
+window.addEventListener('message', function(ev){
+  if (!ev.data || ev.data.type !== 'cotacao_switch_tab') return;
+  var tab = ev.data.tab;
+  if (tab === 'aprov' && !ehAprovador(usuarioLogadoAtual())) return;
+  if (['calc','hist','oc','aprov'].indexOf(tab) !== -1) switchTab(tab);
+});
 
 /* ---- TOGGLE MOBILE: alterna form ↔ resultado ---- */
 let _mobShowingResult = false;
