@@ -1004,9 +1004,26 @@
     #mob-toggle-btn {
       display: flex !important;
     }
-    /* Esconde tabs do header no mobile — não usadas no iframe */
-    .nav-tabs, .btn-config, .header-divider {
+    /* Esconde só o botão de config (Sheets) e os divisores decorativos —
+       as abas (Calculadora/Histórico/Ordem de Coleta/Aprovação) continuam
+       visíveis, só ficam compactas e roláveis na horizontal */
+    .btn-config, .header-divider {
       display: none !important;
+    }
+    .nav-tabs {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      flex-shrink: 1;
+      max-width: 100%;
+      margin-left: 0;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      padding: 6px 10px;
+      font-size: 11px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     /* Header compacto */
     .app-header {
