@@ -1035,6 +1035,58 @@
     /* Aprovação (Ponto 4) — painel vira 1 coluna, cards mais compactos */
     .aprov-card-head { gap: 6px; }
     .det-grid { grid-template-columns: 1fr; }
+
+    /* ── HISTÓRICO / ORDEM DE COLETA / APROVAÇÃO — padding e alturas
+       pensadas pro celular (no desktop essas telas assumem 100vh e um
+       padding largo, que fica horroroso numa tela de 380px) ── */
+    .hist-view, .oc-view, .aprov-view {
+      padding: 14px;
+      height: auto;
+      min-height: calc(100vh - 52px);
+    }
+
+    /* Barra de estatísticas do histórico — empilha em vez de ficar tudo
+       espremido numa linha só */
+    .hist-stats-bar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 14px;
+      padding: 14px;
+    }
+    .donut-wrap { justify-content: center; }
+    .hist-kpis {
+      margin-left: 0;
+      justify-content: space-around;
+      gap: 10px;
+    }
+    .hist-kpi { min-width: 0; flex: 1; }
+    .hist-kpi-val { font-size: 22px; }
+
+    /* Toolbar do histórico — título em cima, filtros embaixo, ocupando
+       a largura toda pra não ficar torto */
+    .hist-toolbar { gap: 8px; }
+    .hist-toolbar h2 { flex: 1 1 100%; font-size: 14px; }
+    .hist-filter-drop, .hist-filter-drop-btn { flex: 1 1 auto; }
+    .hist-filter-drop-btn { justify-content: center; padding: 8px 10px; }
+    .hist-drop-menu { left: 0; right: 0; min-width: 0; }
+    .hist-filter-btn { padding: 8px 10px; flex: 1 1 auto; text-align: center; }
+    #hist-busca-cliente { width: 100%; flex: 1 1 100%; }
+
+    /* Ordem de Coleta — grids de 2/3 colunas viram 1 coluna, botões de
+       ação empilham em vez de ficar lado a lado */
+    .oc-grid, .oc-grid-3 { grid-template-columns: 1fr; }
+    .oc-panel { padding: 14px; }
+    .oc-actions { flex-direction: column-reverse; width: 100%; }
+    .oc-actions button { width: 100%; justify-content: center; }
+    .btn-oc-pdf, .btn-oc-clear { padding: 12px 18px; }
+    .oc-cnpj-row { flex-wrap: wrap; }
+    /* Cabeçalho da OC (título + botões) empilha em vez de espremer lado a lado */
+    #oc-view > div:first-child { flex-wrap: wrap; gap: 12px; }
+    #oc-view > div:first-child > div:first-child { flex: 1 1 100%; }
+
+    /* Painel de Aprovação — cabeçalho do card e ações empilham melhor */
+    .aprov-meta { display: block; width: 100%; margin-top: 2px; }
+    .aprov-actions button { flex: 1 1 auto; justify-content: center; }
   }
 
 .opt-especial { color: #F5B800; font-style: italic; }
