@@ -315,7 +315,16 @@ tbody tr:last-child{border-bottom:none;}
 /* Modais — sempre em formato bottom sheet (desliza de baixo, cantos
    arredondados só em cima, largura total) */
 .mo{align-items:flex-end;padding:0;}
-.mw{width:100%;max-width:100%;border-radius:16px 16px 0 0;max-height:92vh;}
+.mw{width:100% !important;max-width:100% !important;border-radius:16px 16px 0 0;max-height:92vh;}
+/* Grids soltos usados em Frota, Fluxo de Caixa, modais de importação/
+   exclusão e nos "cards de fórmula" do DRE — nenhum deles tinha classe
+   fácil de reaproveitar, então ajusta cada um puxando pelo que já existe */
+#fl-grid{grid-template-columns:1fr !important;}
+.fm{grid-template-columns:1fr 1fr !important;}
+.formula-grid{grid-template-columns:1fr !important;}
+[style*="grid-template-columns:repeat(5,1fr)"]{grid-template-columns:1fr 1fr !important;}
+[style*="grid-template-columns:repeat(3,1fr)"]{grid-template-columns:1fr 1fr !important;}
+[style*="grid-template-columns:1fr 1fr 1fr"]{grid-template-columns:1fr 1fr !important;}
 .mf{position:sticky;bottom:0;background:var(--white);flex-direction:column;padding-bottom:calc(16px + env(safe-area-inset-bottom,0));}
 .mf .btn{width:100%;justify-content:center;padding:11px 14px;}
 
