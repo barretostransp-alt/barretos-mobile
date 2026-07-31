@@ -415,9 +415,14 @@ var state = {
 //  INIT
 // ══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
-  // Pega usuário logado
+  // Pega usuário logado — lê de sessionStorage OU localStorage, porque
+  // dependendo de como essa página é aberta (direto, ou embutida via
+  // iframe no shell mobile) a sessão pode estar gravada num ou noutro.
+  // Sem esse fallback, "quem está logado" ficava sempre null no mobile,
+  // e por isso caía no modo "mostrar agenda de todo mundo".
   try {
-    var u = JSON.parse(sessionStorage.getItem('barretos_user') || '{}');
+    var raw = sessionStorage.getItem('barretos_user') || localStorage.getItem('barretos_user');
+    var u = JSON.parse(raw || '{}');
     state.currentUser = u.login ? u : null;
   } catch(e) { state.currentUser = null; }
 
