@@ -3019,7 +3019,7 @@ function renderAprovPanel() {
       <div class="aprov-card-head">
         <span class="aprov-num">#${String(numero).padStart(4,'0')}</span>
         <span class="aprov-meta">${fmtCampo(r['Vendedor'])} · ${fmtCampo(r['Cliente'])} · ${fmtCampo(r['Cidade Origem'])} → ${fmtCampo(r['Cidade Destino'])} · ${fmtCampo(r['Valor'])}</span>
-        ${badgeAprovacaoHTML(r['StatusAprovacao'], numero)}
+        ${badgeAprovacaoHTML(r['StatusAprovacao'], numero, r['Vendedor'])}
         <button onclick="abrirDetalheCotacao('${numero}')" style="margin-left:auto;background:none;border:1px solid var(--charcoal-border);border-radius:6px;color:var(--txt-dim,#888);padding:4px 10px;cursor:pointer;font-size:11px">Ver cotação completa</button>
       </div>
       ${renderNotasThreadHTML(numero, r['Observacao'] || r['Observação'] || '')}
@@ -3977,7 +3977,7 @@ function abrirDetalheCotacao(numero) {
       <div class="det-field"><div class="det-lbl">CNPJ Emitente</div><div class="det-val">${fmtCampo(r['CNPJ Emit'])}</div></div>
       <div class="det-field"><div class="det-lbl">CNPJ Tomador</div><div class="det-val">${fmtCampo(r['CNPJ Tomador'])}</div></div>
       <div class="det-field"><div class="det-lbl">Status (cliente)</div><div class="det-val">${fmtCampo(r['Status'])}</div></div>
-      <div class="det-field"><div class="det-lbl">Aprovação interna</div><div class="det-val">${badgeAprovacaoHTML(r['StatusAprovacao'], numero)}</div></div>
+      <div class="det-field"><div class="det-lbl">Aprovação interna</div><div class="det-val">${badgeAprovacaoHTML(r['StatusAprovacao'], numero, r['Vendedor'])}</div></div>
       <div class="det-field full"><div class="det-lbl">Observações da cotação (impressas no PDF)</div><div class="det-val">${fmtCampo(r['ObservacoesCliente'])}</div></div>
     </div>
     <div class="det-section-title"><i class="ti ti-messages" style="font-size:12px"></i> Histórico de Observação</div>
@@ -4063,17 +4063,20 @@ function entraNoFluxoAprovacao(numero) {
   return !isNaN(n) && n >= APROVACAO_MIN_NUMERO;
 }
 
-function badgeAprovacaoHTML(statusAprov, numero) {
+function badgeAprovacaoHTML(statusAprov, numero, vendedorNome) {
   if (numero !== undefined && !entraNoFluxoAprovacao(numero)) {
     return `<span class="badge-status" style="background:rgba(123,127,150,.1);color:var(--txt-dim,#888);border:1px solid var(--charcoal-border)">Fora do fluxo</span>`;
   }
-  const st = statusAprov || 'Aguardando';
+  // Cotação do próprio aprovador — não passa pelo fluxo de aprovação (os
+  // 3 aprovadores não aprovam a própria cotação), então sempre mostra
+  // como Aprovada aqui, independente do que estiver salvo na planilha.
+  const st = vendedorNome && vendedorEhAprovador(vendedorNome) ? 'Aprovada' : (statusAprov || 'Aguardando');
   const cls = st === 'Aprovada' ? 'badge-aprovada' : st === 'Recusada' ? 'badge-recusada' : 'badge-aguardando';
   return `<span class="badge-status ${cls}">${st}</span>`;
 }
 
 function buildAprovCell(r) {
-  return `<td>${badgeAprovacaoHTML(r['StatusAprovacao'], getLocalKey(r))}</td>`;
+  return `<td>${badgeAprovacaoHTML(r['StatusAprovacao'], getLocalKey(r), r['Vendedor'])}</td>`;
 }
 
 function buildObsCell(r, rowKey) {
