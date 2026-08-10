@@ -309,6 +309,43 @@ function broadcastTemaMobile(tema){
 
 var URL_USUARIOS = 'https://script.google.com/macros/s/AKfycbyYMOKvOInjNNHjQGlW5k8mGJ6ydl2NKfOr3HRWKrpFXARXxYSsb-vJF5t71yYG_6k69A/exec';
 var URL_KANBANS  = 'https://script.google.com/macros/s/AKfycbwkX0XLYMnWIKa9SsS1oSv9E2hhGYjKi5Fp2cPHA_J_X1jg7NiGVT4YfdFAjZ3Ps2C4Qg/exec';
+
+/* ── Nova tentativa automática quando o backend está ocupado ──
+   O Kanban é o módulo com mais gente mexendo ao mesmo tempo — o Apps
+   Script agora devolve {success:false, ocupado:true} em vez de ficar
+   pendurado até travar (planilha ocupada por outra pessoa). Em vez de
+   mostrar erro na hora, espera um pouco e tenta de novo sozinho — na
+   prática, a maioria das vezes o usuário nem chega a perceber. */
+async function fetchComTentativas_(url, options, maxTentativas){
+  maxTentativas = maxTentativas || 3;
+  for(var tentativa = 1; tentativa <= maxTentativas; tentativa++){
+    try{
+      var res = await fetch(url, options);
+      var json = await res.json();
+      if(json && json.ocupado && tentativa < maxTentativas){
+        await new Promise(function(r){ setTimeout(r, 2500); });
+        continue;
+      }
+      return json;
+    }catch(e){
+      if(tentativa >= maxTentativas) throw e;
+      await new Promise(function(r){ setTimeout(r, 2500); });
+    }
+  }
+}
+
+// Por padrão, cada aba do Kanban só carrega cards com "Data da Coleta" dos
+// últimos 2 meses — reduz o tamanho do que precisa ser transferido/
+// processado a cada carregamento. "Ver mais antigos" busca de novo sem
+// esse filtro, trazendo o histórico completo pra consulta. Flag única pra
+// todas as abas (mais simples) — uma vez ligada, vale pra qualquer aba
+// que for aberta dali pra frente também.
+var verTodosCards = false;
+function dataLimiteISO_(){
+  var d = new Date();
+  d.setMonth(d.getMonth() - 2);
+  return d.toISOString().slice(0,10);
+}
 var ABAS_CONFIG  = [{"key": "kanban_pin", "aba": "PINHEIRO", "pfx": "P", "label": "Pinheiro", "color": "#F97316"}, {"key": "kanban_inf", "aba": "INFRA", "pfx": "S", "label": "Infra", "color": "#14B8A6"}, {"key": "kanban_bar", "aba": "BARRETO'S", "pfx": "B", "label": "Barreto's", "color": "#F5B800"}, {"key": "kanban_gon", "aba": "GONCALVES", "pfx": "G", "label": "Gonçalves", "color": "#3B82F6"}];
 
 // Mapeamento: campo padrão do mobile → nome real da coluna em cada aba
@@ -513,7 +550,7 @@ function onFilesSelected(files) {
       }
       try {
         var base64 = await lerBase64(file);
-        var r = await fetch(URL_KANBANS, {
+        var j = await fetchComTentativas_(URL_KANBANS, {
           method: 'POST',
           body: JSON.stringify({
             action: 'upload_anexo',
@@ -523,7 +560,6 @@ function onFilesSelected(files) {
             mimeType: file.type || 'application/octet-stream'
           })
         });
-        var j = await r.json();
         if (j.success && j.anexo) {
           cardAttachments.push(j.anexo);
         } else {
@@ -549,8 +585,7 @@ function onFilesSelected(files) {
 
 function carregarAnexos(chave) {
   if (!chave) return;
-  fetch(URL_KANBANS + '?action=anexos&chave=' + encodeURIComponent(chave))
-    .then(function(r) { return r.json(); })
+  fetchComTentativas_(URL_KANBANS + '?action=anexos&chave=' + encodeURIComponent(chave))
     .then(function(j) {
       if (j.success) {
         cardAttachments = j.anexos || [];
@@ -597,7 +632,7 @@ function renderAttachments() {
 function removeAttach(idx) {
   var anexo = cardAttachments[idx];
   if (anexo && anexo.id) {
-    fetch(URL_KANBANS, {
+    fetchComTentativas_(URL_KANBANS, {
       method: 'POST',
       body: JSON.stringify({ action: 'excluir_anexo', fileId: anexo.id })
     }).catch(function() {});
@@ -840,8 +875,9 @@ async function renderKanban(key) {
   var aba = ABAS_CONFIG.find(function(a) { return a.key === key; });
   if (!aba) return;
   try {
-    var r = await fetch(URL_KANBANS + '?aba=' + encodeURIComponent(aba.aba));
-    var j = await r.json();
+    var url = URL_KANBANS + '?aba=' + encodeURIComponent(aba.aba);
+    if(!verTodosCards) url += '&desde=' + dataLimiteISO_();
+    var j = await fetchComTentativas_(url);
     if (j.success) {
       // Normaliza nomes de colunas da planilha para o padrão do mobile
       rawCards[key] = (j.rows || []).map(function(card) {
@@ -852,7 +888,7 @@ async function renderKanban(key) {
         });
         return normalizado;
       });
-      document.getElementById('top-sub').textContent = rawCards[key].length + ' cards';
+      document.getElementById('top-sub').textContent = rawCards[key].length + ' cards' + (verTodosCards ? '' : ' (últ. 2 meses)');
     } else {
       document.getElementById('top-sub').textContent = 'erro ao carregar';
     }
@@ -860,6 +896,11 @@ async function renderKanban(key) {
     document.getElementById('top-sub').textContent = 'sem conexão';
   }
   paintKanban(key);
+}
+
+async function carregarTodosCardsMobile(){
+  verTodosCards = true;
+  await renderKanban(currentTab);
 }
 
 function paintKanban(key) {
@@ -882,6 +923,25 @@ function paintKanban(key) {
   });
   sb.appendChild(si); sb.appendChild(sinp);
   content.appendChild(sb);
+
+  // "Ver mais antigos" — só aparece se o filtro dos últimos 2 meses ainda
+  // estiver ativo (depois de clicado, some — já carregou tudo).
+  if(!verTodosCards){
+    var barAntigos = document.createElement('div');
+    barAntigos.style.cssText = 'padding:0 12px 8px;';
+    var btnAntigos = document.createElement('button');
+    btnAntigos.id = 'btn-antigos-mobile';
+    btnAntigos.className = 'btn-attach';
+    btnAntigos.style.cssText = 'width:100%;justify-content:center;';
+    btnAntigos.innerHTML = '<i class="ti ti-history" style="font-size:14px"></i> Ver cards mais antigos que 2 meses';
+    btnAntigos.onclick = async function(){
+      btnAntigos.disabled = true;
+      btnAntigos.innerHTML = '<span class="spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:6px"></span> Carregando...';
+      await carregarTodosCardsMobile();
+    };
+    barAntigos.appendChild(btnAntigos);
+    content.appendChild(barAntigos);
+  }
 
   // Column tabs container
   var ct = document.createElement('div'); ct.className = 'col-tabs'; ct.id = 'col-tabs';
@@ -1025,8 +1085,7 @@ function abrirNovo() {
   if (!rawCards[currentTab]) {
     var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
     if (aba) {
-      fetch(URL_KANBANS + '?aba=' + encodeURIComponent(aba.aba))
-        .then(function(r) { return r.json(); })
+      fetchComTentativas_(URL_KANBANS + '?aba=' + encodeURIComponent(aba.aba))
         .then(function(j) {
           if (j.success) rawCards[currentTab] = j.rows || [];
           renderModalBody({});
@@ -1244,8 +1303,7 @@ async function salvarCard() {
   console.log('[salvarCard] payload:', JSON.stringify(payload));
 
   try {
-    var r = await fetch(URL_KANBANS, {method:'POST', body:JSON.stringify(payload)});
-    var j = await r.json();
+    var j = await fetchComTentativas_(URL_KANBANS, {method:'POST', body:JSON.stringify(payload)});
     console.log('[salvarCard] resposta:', JSON.stringify(j));
     if (j.success) { fecharModal(); await renderKanban(currentTab); }
     else alert('Erro: ' + (j.error||'desconhecido'));
@@ -1262,9 +1320,8 @@ async function excluirCard() {
   // O Apps Script busca pelo valor na coluna "Chave" ou "DT CODIGO"
   var chaveValor = editCard.card['DT CODIGO'];
   try {
-    var r = await fetch(URL_KANBANS, {method:'POST',
+    var j = await fetchComTentativas_(URL_KANBANS, {method:'POST',
       body:JSON.stringify({action:'delete', aba:aba.aba, chave:chaveValor})});
-    var j = await r.json();
     if (j.success) { fecharModal(); await renderKanban(currentTab); }
     else alert('Erro: ' + j.error);
   } catch(e) { alert('Erro de conexão.'); }
