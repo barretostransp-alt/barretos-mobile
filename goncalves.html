@@ -166,6 +166,9 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
       <span id="clbl">Configurar</span>
       <i class="ti ti-settings" style="font-size:12px"></i>
     </button>
+    <button class="bsm" id="btn-antigos" onclick="carregarTodosCards()" title="Carrega também os cards com Data da Coleta anterior a 2 meses atrás">
+      <i class="ti ti-history" style="font-size:12px"></i> Antigos
+    </button>
     <button class="bsm" id="btn-ref" onclick="loadData()">
       <i class="ti ti-refresh" style="font-size:12px"></i> Atualizar
     </button>
@@ -289,6 +292,31 @@ function fromDateInp(s){
 }
 
 var WEBAPP_URL=localStorage.getItem(SK)||"";
+
+/* ── Nova tentativa automática quando o backend está ocupado ──
+   O Kanban é o módulo com mais gente mexendo ao mesmo tempo — o Apps
+   Script agora devolve {success:false, ocupado:true} em vez de ficar
+   pendurado até travar (planilha ocupada por outra pessoa). Em vez de
+   mostrar erro na hora, espera um pouco e tenta de novo sozinho — na
+   prática, a maioria das vezes o usuário nem chega a perceber. */
+async function fetchComTentativas_(url, options, maxTentativas){
+  maxTentativas = maxTentativas || 3;
+  for(var tentativa = 1; tentativa <= maxTentativas; tentativa++){
+    try{
+      var res = await fetch(url, options);
+      var json = await res.json();
+      if(json && json.ocupado && tentativa < maxTentativas){
+        await new Promise(function(r){ setTimeout(r, 2500); });
+        continue;
+      }
+      return json;
+    }catch(e){
+      if(tentativa >= maxTentativas) throw e;
+      await new Promise(function(r){ setTimeout(r, 2500); });
+    }
+  }
+}
+
 var allCards=[],editKey=null,vendedores=[],pendAtt=[],driveAtts=[];
 // ── getExtra / saveExtra — compatibilidade com dados antigos
 function getExtra(key) {
@@ -309,12 +337,24 @@ function setConn(on){
   document.getElementById("clbl").textContent=on?"Conectado":"Configurar";
 }
 
+// Por padrão, o board só carrega cards com "Data da Coleta" dos últimos 2
+// meses — reduz o tamanho do que precisa ser transferido/processado a
+// cada carregamento. "Ver mais antigos" busca de novo sem esse filtro,
+// trazendo o histórico completo pra consulta.
+var verTodosCards = false;
+function dataLimiteISO_(){
+  var d = new Date();
+  d.setMonth(d.getMonth() - 2);
+  return d.toISOString().slice(0,10);
+}
+
 async function loadData(){
   var btn=document.getElementById("btn-ref");
   btn.innerHTML="<span class=\"spinner\"></span>";
   try{
-    var r=await fetch(WEBAPP_URL+"?aba="+encodeURIComponent(ABA));
-    var j=await r.json();
+    var url = WEBAPP_URL+"?aba="+encodeURIComponent(ABA);
+    if(!verTodosCards) url += "&desde="+dataLimiteISO_();
+    var j=await fetchComTentativas_(url);
     if(!j.success)throw new Error(j.error);
     allCards=j.rows;
     // rebuild vendedores list
@@ -333,6 +373,15 @@ async function loadData(){
       "Erro: "+ex.message+"<br><br><button onclick=\"openCfg()\" style=\"background:var(--gold);border:none;border-radius:6px;padding:8px 16px;font-size:12px;cursor:pointer;font-weight:700\">Configurar URL</button></div>";
   }
   btn.innerHTML="<i class=\"ti ti-refresh\" style=\"font-size:12px\"></i> Atualizar";
+}
+
+async function carregarTodosCards(){
+  verTodosCards = true;
+  var btnAntigos = document.getElementById("btn-antigos");
+  btnAntigos.innerHTML = "<span class=\"spinner\"></span>";
+  await loadData();
+  btnAntigos.innerHTML = "<i class=\"ti ti-history\" style=\"font-size:12px\"></i> Tudo carregado";
+  btnAntigos.disabled = true;
 }
 
 function doFilter(){
@@ -612,8 +661,7 @@ async function saveCard(){
     var pl=editKey
       ?{action:"update",aba:ABA,chave:editKey,dados:dados}
       :{action:"create",aba:ABA,dados:dados};
-    var r=await fetch(WEBAPP_URL,{method:"POST",body:JSON.stringify(pl)});
-    var j=await r.json();
+    var j=await fetchComTentativas_(WEBAPP_URL,{method:"POST",body:JSON.stringify(pl)});
     if(!j.success)throw new Error(j.error);
     var ck=editKey||dados["DT CODIGO"];
     saveExtra(ck,dados);
@@ -631,8 +679,7 @@ async function deleteCard(){
   if(!confirm("Excluir card "+editKey+"?"))return;
   var msg=document.getElementById("mmsg");
   try{
-    var r=await fetch(WEBAPP_URL,{method:"POST",body:JSON.stringify({action:"delete",aba:ABA,chave:editKey})});
-    var j=await r.json();if(!j.success)throw new Error(j.error);
+    var j=await fetchComTentativas_(WEBAPP_URL,{method:"POST",body:JSON.stringify({action:"delete",aba:ABA,chave:editKey})});if(!j.success)throw new Error(j.error);
     // anexos limpos automaticamente ao excluir card via Drive
     await loadData();closeModal();
   }catch(ex){msg.textContent="Erro: "+ex.message;msg.className="mmsg err";}
@@ -647,8 +694,7 @@ function e(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").re
 
 function carregarAnexosDrive(chave) {
   if (!chave || !WEBAPP_URL) return;
-  fetch(WEBAPP_URL + '?action=anexos&chave=' + encodeURIComponent(chave))
-    .then(function(r) { return r.json(); })
+  fetchComTentativas_(WEBAPP_URL + '?action=anexos&chave=' + encodeURIComponent(chave))
     .then(function(j) {
       if (j.success) { driveAtts = j.anexos || []; renderAttList(); }
     }).catch(function() {});
@@ -709,7 +755,7 @@ function rmAtt(i) { pendAtt.splice(i, 1); renderAttList(); }
 
 function rmAttDrive(fileId, i) {
   if (!confirm("Excluir este anexo permanentemente?")) return;
-  fetch(WEBAPP_URL, {
+  fetchComTentativas_(WEBAPP_URL, {
     method: "POST",
     body: JSON.stringify({ action: "excluir_anexo", fileId: fileId })
   }).catch(function() {});
@@ -738,7 +784,7 @@ async function saveAtt(key) {
         reader.onerror = function() { reject(new Error("Falha ao ler " + f.name)); };
         reader.readAsDataURL(f);
       });
-      var r = await fetch(WEBAPP_URL, {
+      var j = await fetchComTentativas_(WEBAPP_URL, {
         method: "POST",
         body: JSON.stringify({
           action: "upload_anexo",
@@ -748,7 +794,6 @@ async function saveAtt(key) {
           mimeType: f.type || "application/octet-stream"
         })
       });
-      var j = await r.json();
       console.log('[saveAtt] resposta Drive:', JSON.stringify(j));
       if (j.success && j.anexo) driveAtts.push(j.anexo);
       else { console.error('[saveAtt] erro:', j.error); erros.push(f.name); }
@@ -779,11 +824,22 @@ async function ddrop(ev,status){
   var card=null;
   for(var i=0;i<allCards.length;i++){if((allCards[i]["DT CODIGO"]||allCards[i]["Chave"])===key){card=allCards[i];break;}}
   if(!card)return;
+  var statusAnterior=card["Status"];
   card["Status"]=status;
+  renderBoard(); // feedback visual imediato, otimista
   try{
-    await fetch(WEBAPP_URL,{method:"POST",body:JSON.stringify({action:"update",aba:ABA,chave:key,dados:card})});
+    var j=await fetchComTentativas_(WEBAPP_URL,{method:"POST",body:JSON.stringify({action:"update",aba:ABA,chave:key,dados:card})});
+    if(!j||!j.success){
+      card["Status"]=statusAnterior;
+      renderBoard();
+      alert("Não foi possível mover o card agora ("+(j&&j.error?j.error:"tente novamente")+"). O card voltou pra coluna original.");
+    }
+  }catch(ex){
+    console.warn("Erro ao mover card:",ex);
+    card["Status"]=statusAnterior;
     renderBoard();
-  }catch(ex){console.warn("Erro ao mover card:",ex);}
+    alert("Não foi possível mover o card agora. O card voltou pra coluna original — tente de novo.");
+  }
 }
 
 // ── CÓDIGO AUTOMÁTICO
