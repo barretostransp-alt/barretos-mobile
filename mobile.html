@@ -237,6 +237,13 @@ body.tema-claro .cotacao-subnav-btn.active{color:var(--accent) !important;}
       </div>
     </div>
     <nav class="sidebar-nav-body" id="sidebar-nav-body"></nav>
+    <div class="sidebar-section-lbl" style="margin-top:auto;padding:10px 16px 4px">Conta</div>
+    <button class="sidebar-item" id="btn-ativar-push" style="border:none;background:none;font-family:inherit;font-size:inherit;cursor:pointer;width:100%;text-align:left" onclick="ativarNotificacoes()">
+      <i class="ti ti-bell"></i><span id="txt-ativar-push">Ativar Notificações</span>
+    </button>
+    <button class="sidebar-item" style="border:none;background:none;font-family:inherit;font-size:inherit;cursor:pointer;color:var(--red)" onclick="logout()">
+      <i class="ti ti-logout" style="color:var(--red)"></i>Encerrar Sessão
+    </button>
   </aside>
   <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebarMobile(false)"></div>
 
@@ -258,6 +265,21 @@ body.tema-claro .cotacao-subnav-btn.active{color:var(--accent) !important;}
 <button class="fab" id="fab" onclick="abrirNovo()" style="display:none">
   <i class="ti ti-plus"></i>
 </button>
+
+<!-- TROCA DE SENHA OBRIGATÓRIA -->
+<div id="troca-senha-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;align-items:center;justify-content:center;">
+  <div style="background:#151820;border:1px solid #1E2130;border-radius:14px;padding:24px;max-width:380px;width:calc(100% - 32px);font-family:'DM Sans',sans-serif;">
+    <div style="font-size:16px;font-weight:800;margin-bottom:6px;color:#E8EAF0">Defina uma nova senha</div>
+    <div style="font-size:12px;color:#6B7280;margin-bottom:16px">Por segurança, antes de continuar você precisa trocar a senha temporária por uma só sua.</div>
+    <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:5px">Nova senha</label>
+    <input type="password" id="ts-senha" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1px solid #1E2130;background:#0F1117;color:#E8EAF0;margin-bottom:12px;font-family:inherit;font-size:16px" placeholder="Mínimo 8 caracteres">
+    <label style="font-size:11px;font-weight:600;color:#6B7280;display:block;margin-bottom:5px">Confirmar nova senha</label>
+    <input type="password" id="ts-senha2" style="width:100%;box-sizing:border-box;padding:11px;border-radius:8px;border:1px solid #1E2130;background:#0F1117;color:#E8EAF0;margin-bottom:8px;font-family:inherit;font-size:16px" placeholder="Repita a senha">
+    <div id="ts-msg" style="font-size:12px;color:#EF4444;min-height:16px;margin-bottom:10px"></div>
+    <button id="ts-btn" onclick="salvarTrocaSenhaObrigatoria()" style="width:100%;background:#F5B800;color:#111;border:none;border-radius:8px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit">Salvar e continuar</button>
+    <button onclick="executarLogout_()" style="width:100%;background:none;border:none;color:#6B7280;padding:10px;font-size:12px;cursor:pointer;margin-top:4px;font-family:inherit">Sair</button>
+  </div>
+</div>
 
 <div class="modal-ov" id="modal-card" onclick="if(event.target===this)fecharModal()">
   <div class="modal-sheet">
@@ -307,8 +329,82 @@ function broadcastTemaMobile(tema){
   });
 }
 
-var URL_USUARIOS = 'https://script.google.com/macros/s/AKfycbyYMOKvOInjNNHjQGlW5k8mGJ6ydl2NKfOr3HRWKrpFXARXxYSsb-vJF5t71yYG_6k69A/exec';
+// sessionStorage não é compartilhado entre iframe e página pai (mesmo em
+// mesma origem) — copia manualmente pros módulos que dependem dela, igual
+// ao onFrameLoad() do shell.html no desktop.
+function propagarAuthParaFrame_(frameEl){
+  try {
+    var fw = frameEl.contentWindow;
+    ['barretos_user','barretos_nome','barretos_perfil','barretos_login','barretos_permissoes','barretos_auth_token','barretos_auth_refresh'].forEach(function(k){
+      var sv = sessionStorage.getItem(k); if (sv) fw.sessionStorage.setItem(k, sv);
+      var lv = localStorage.getItem(k);   if (lv) fw.localStorage.setItem(k, lv);
+    });
+  } catch(e) {}
+}
+function onFrameLoadMobile(frameEl, tema){
+  propagarAuthParaFrame_(frameEl);
+  setTimeout(function(){ broadcastTemaMobile(tema||(localStorage.getItem('barretos_tema')||'escuro')); }, 250);
+}
+
+// URL_KANBANS agora só é usado pros anexos (upload/lista/exclusão no
+// Google Drive) — os dados do card em si vêm do Supabase, via API_BASE
+// abaixo (mesmo backend do desktop, ver barretos.html/goncalves.html/...).
 var URL_KANBANS  = 'https://script.google.com/macros/s/AKfycbwkX0XLYMnWIKa9SsS1oSv9E2hhGYjKi5Fp2cPHA_J_X1jg7NiGVT4YfdFAjZ3Ps2C4Qg/exec';
+
+var API_BASE = 'https://barretos-backend.onrender.com/api';
+var SUPABASE_URL      = 'https://qjwobkpgqmaqisphwonl.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_c4MrJXB6nTHY0a5ShAFRaQ_Jc4qDdPr';
+
+function getAuthToken()    { return localStorage.getItem('barretos_auth_token'); }
+function getRefreshToken() { return localStorage.getItem('barretos_auth_refresh'); }
+
+async function tentarRenovarToken() {
+  var refresh = getRefreshToken();
+  if (!refresh) return false;
+  var agora = Date.now();
+  var ultimaRenovacao = parseInt(localStorage.getItem('barretos_auth_renovado_em') || '0', 10);
+  if (agora - ultimaRenovacao < 5000) return !!getAuthToken();
+  try {
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!r.ok) return false;
+    var j = await r.json();
+    localStorage.setItem('barretos_auth_token', j.access_token);
+    localStorage.setItem('barretos_auth_refresh', j.refresh_token);
+    localStorage.setItem('barretos_auth_renovado_em', String(Date.now()));
+    return true;
+  } catch (e) { return false; }
+}
+
+// Todas as chamadas ao /api/kanban (cards de verdade, no Supabase) passam
+// por aqui — vai sempre com o token de login e tenta renovar sozinho se
+// já tiver expirado. Anexos continuam no Apps Script (URL_KANBANS acima).
+async function apiFetch(url, options) {
+  options = options || {};
+  var headers = Object.assign({}, options.headers, { Authorization: 'Bearer ' + getAuthToken() });
+  var res = await fetch(url, Object.assign({}, options, { headers: headers }));
+  if (res.status === 401) {
+    if (await tentarRenovarToken()) {
+      headers.Authorization = 'Bearer ' + getAuthToken();
+      res = await fetch(url, Object.assign({}, options, { headers: headers }));
+    }
+    if (res.status === 401) {
+      mostrarTelaSemAcesso();
+      throw new Error('Sessão expirada');
+    }
+  }
+  return res;
+}
+
+function mostrarTelaSemAcesso() {
+  ['barretos_user','barretos_nome','barretos_perfil','barretos_login','barretos_permissoes','barretos_auth_token','barretos_auth_refresh'].forEach(function(k) {
+    sessionStorage.removeItem(k); localStorage.removeItem(k);
+  });
+  window.location.href = 'mobile_login.html';
+}
 
 /* ── Nova tentativa automática quando o backend está ocupado ──
    O Kanban é o módulo com mais gente mexendo ao mesmo tempo — o Apps
@@ -334,72 +430,55 @@ async function fetchComTentativas_(url, options, maxTentativas){
   }
 }
 
-// Por padrão, cada aba do Kanban só carrega cards com "Data da Coleta" dos
-// últimos 2 meses — reduz o tamanho do que precisa ser transferido/
-// processado a cada carregamento. "Ver mais antigos" busca de novo sem
-// esse filtro, trazendo o histórico completo pra consulta. Flag única pra
-// todas as abas (mais simples) — uma vez ligada, vale pra qualquer aba
-// que for aberta dali pra frente também.
-var verTodosCards = false;
-function dataLimiteISO_(){
-  var d = new Date();
-  d.setMonth(d.getMonth() - 2);
-  return d.toISOString().slice(0,10);
-}
 var ABAS_CONFIG  = [{"key": "kanban_pin", "aba": "PINHEIRO", "pfx": "P", "label": "Pinheiro", "color": "#F97316"}, {"key": "kanban_inf", "aba": "INFRA", "pfx": "S", "label": "Infra", "color": "#14B8A6"}, {"key": "kanban_bar", "aba": "BARRETO'S", "pfx": "B", "label": "Barreto's", "color": "#F5B800"}, {"key": "kanban_gon", "aba": "GONCALVES", "pfx": "G", "label": "Gonçalves", "color": "#3B82F6"}];
 
-// Mapeamento: campo padrão do mobile → nome real da coluna em cada aba
-// Só precisa listar os que DIFEREM do nome padrão
-// Mapeamento: campo padrão interno do mobile → nome real da coluna na planilha
-// Baseado nos cabeçalhos reais de cada aba (confirmados via debugTorre)
-// INFRA:    FRETE CLIENTE / FRETE MOTORISTA / CUSTO TOTAL OPERACIONAL / PREVISÃO DA ENTREGA
-// Demais:   FRETE COBRADO / FRETE PAGO / CUSTO OPERACIONAL TOTAL / PREVISÃO DE ENTREGA
-var MAPA_COLUNAS_ABA = {
-  "PINHEIRO": {
-    "DT CODIGO":               "Chave",
-    "FRETE CLIENTE":           "FRETE COBRADO",
-    "FRETE MOTORISTA":         "FRETE PAGO",
-    "CUSTO TOTAL OPERACIONAL": "CUSTO OPERACIONAL TOTAL",
-    "PREVISAO DA ENTREGA":     "PREVISÃO DE ENTREGA"
-  },
-  "INFRA": {
-    "DT CODIGO":               "Chave",
-    "FRETE CLIENTE":           "FRETE CLIENTE",
-    "FRETE MOTORISTA":         "FRETE MOTORISTA",
-    "CUSTO TOTAL OPERACIONAL": "CUSTO TOTAL OPERACIONAL",
-    "PREVISAO DA ENTREGA":     "PREVISÃO DA ENTREGA"
-  },
-  "BARRETO'S": {
-    "DT CODIGO":               "Chave",
-    "FRETE CLIENTE":           "FRETE COBRADO",
-    "FRETE MOTORISTA":         "FRETE PAGO",
-    "CUSTO TOTAL OPERACIONAL": "CUSTO OPERACIONAL TOTAL",
-    "PREVISAO DA ENTREGA":     "PREVISÃO DE ENTREGA"
-  },
-  "GONCALVES": {
-    "DT CODIGO":               "Chave",
-    "FRETE CLIENTE":           "FRETE COBRADO",
-    "FRETE MOTORISTA":         "FRETE PAGO",
-    "CUSTO TOTAL OPERACIONAL": "CUSTO OPERACIONAL TOTAL",
-    "PREVISAO DA ENTREGA":     "PREVISÃO DE ENTREGA"
-  }
-};
-
-// Converte nome de coluna da planilha → chave padrão do mobile (inverso do mapa)
-function colPlanilhaParaPadrao(nomeAba, colPlanilha) {
-  var mapa = MAPA_COLUNAS_ABA[nomeAba] || {};
-  for (var padrao in mapa) {
-    if (mapa[padrao] === colPlanilha) return padrao;
-  }
-  return colPlanilha; // sem mapeamento = nome já é o padrão
+// Converte um card do formato interno (chaves da tela) pro formato da
+// API (snake_case) — mesmo mapeamento usado em barretos.html/goncalves.html/
+// infra.html/pinheiro.html, uniforme pras 4 empresas (não tem mais tradução
+// por aba: o Supabase usa as mesmas colunas pra todo mundo).
+function mapearParaApi_(dados) {
+  var mapa = {
+    "DT CODIGO":"codigo","Resumo":"resumo","TITULO":"titulo","Status":"status","ACOMPANHAMENTO":"acompanhamento",
+    "CLIENTE":"cliente","CONTATO CLIENTE":"contato_cliente","CNPJ TOMADOR":"cnpj_tomador","VENDEDOR":"vendedor",
+    "DATA DA COLETA":"data_coleta","PREVISÃO DE ENTREGA":"previsao_entrega","MODALIDADE":"modalidade","TIPO DE MATERIAL":"tipo_material",
+    "CTE":"cte","MDF":"mdf","NF":"nf","DATA DA ENTREGA":"data_entrega",
+    "CIDADE ORIGEM":"cidade_origem","UF ORIGEM":"uf_origem","CIDADE DESTINO":"cidade_destino","UF DESTINO":"uf_destino",
+    "FRETE COBRADO":"frete_cobrado","FRETE PAGO":"frete_pago","CUSTO OPERACIONAL TOTAL":"custo_operacional_total","ADIANTAMENTO":"adiantamento",
+    "TIPO DE VEICULO":"tipo_veiculo","MOTORISTA":"motorista","TELEFONE MOTORISTA":"telefone_motorista","GERENCIAMENTO":"gerenciamento",
+    "TITULAR DA CONTA":"titular_conta","TIPO CHAVE PIX":"tipo_chave_pix","CHAVE PIX":"chave_pix","BANCO":"banco",
+    "OBSERVACAO":"observacao","VALE PEDAGIO":"vale_pedagio"
+  };
+  var out = {};
+  Object.keys(mapa).forEach(function(k) {
+    if (dados[k] === undefined) return;
+    out[mapa[k]] = dados[k];
+  });
+  return out;
+}
+// Converte uma linha da API (snake_case) de volta pro formato interno
+// (chaves usadas pela tela) — usado só na leitura.
+function mapearDoApi_(row) {
+  var mapaInverso = {
+    codigo:"DT CODIGO", resumo:"Resumo", titulo:"TITULO", status:"Status", acompanhamento:"ACOMPANHAMENTO",
+    cliente:"CLIENTE", contato_cliente:"CONTATO CLIENTE", cnpj_tomador:"CNPJ TOMADOR", vendedor:"VENDEDOR",
+    data_coleta:"DATA DA COLETA", previsao_entrega:"PREVISÃO DE ENTREGA", modalidade:"MODALIDADE", tipo_material:"TIPO DE MATERIAL",
+    cte:"CTE", mdf:"MDF", nf:"NF", data_entrega:"DATA DA ENTREGA",
+    cidade_origem:"CIDADE ORIGEM", uf_origem:"UF ORIGEM", cidade_destino:"CIDADE DESTINO", uf_destino:"UF DESTINO",
+    frete_cobrado:"FRETE COBRADO", frete_pago:"FRETE PAGO", custo_operacional_total:"CUSTO OPERACIONAL TOTAL", adiantamento:"ADIANTAMENTO",
+    tipo_veiculo:"TIPO DE VEICULO", motorista:"MOTORISTA", telefone_motorista:"TELEFONE MOTORISTA", gerenciamento:"GERENCIAMENTO",
+    titular_conta:"TITULAR DA CONTA", tipo_chave_pix:"TIPO CHAVE PIX", chave_pix:"CHAVE PIX", banco:"BANCO",
+    observacao:"OBSERVACAO", cotacao_numero:"COTAÇÃO", vale_pedagio:"VALE PEDAGIO"
+  };
+  var out = {};
+  Object.keys(mapaInverso).forEach(function(campo) {
+    var chave = mapaInverso[campo];
+    out[chave] = row[campo] || '';
+  });
+  out["Chave"] = out["DT CODIGO"];
+  return out;
 }
 
-// Converte chave padrão do mobile → nome de coluna real na planilha
-function colPadraoParaPlanilha(nomeAba, chavePadrao) {
-  var mapa = MAPA_COLUNAS_ABA[nomeAba] || {};
-  return mapa[chavePadrao] || chavePadrao;
-}
-var COLUNAS_STATUS = ["OPERACIONAL", "COLETA", "AGUARDANDO MANIFESTO", "FATURADO", "MANIFESTOS", "FINALIZADO"];
+var COLUNAS_STATUS = ["OPERACIONAL", "COLETA", "FATURADO", "FINALIZADO"];
 var CAMPOS_CARD  = [
   /* ── Identificação ── */
   {"key": "TITULO",                  "label": "Título do Card",               "type": "text",       "section": "Identificação"},
@@ -411,7 +490,9 @@ var CAMPOS_CARD  = [
   {"key": "CONTATO CLIENTE",         "label": "Contato Cliente",              "type": "text",       "section": "Operação"},
   {"key": "ACOMPANHAMENTO",          "label": "Acompanhamento",               "type": "textarea",   "section": "Operação"},
   {"key": "DATA DA COLETA",          "label": "Data da Coleta",               "type": "date",       "section": "Operação"},
-  {"key": "PREVISAO DA ENTREGA",     "label": "Previsão de Entrega",          "type": "date",       "section": "Operação"},
+  {"key": "PREVISÃO DE ENTREGA",     "label": "Previsão de Entrega",          "type": "date",       "section": "Operação"},
+  {"key": "MODALIDADE",              "label": "Modalidade",                  "type": "select-modalidade", "section": "Operação"},
+  {"key": "TIPO DE MATERIAL",        "label": "Tipo de Material",            "type": "text",       "section": "Operação"},
   {"key": "DATA DA ENTREGA",         "label": "Data da Entrega (real)",       "type": "date",       "section": "Operação"},
   /* ── Rota ── */
   {"key": "CIDADE ORIGEM",           "label": "Cidade Origem",                "type": "text",       "section": "Rota"},
@@ -423,13 +504,15 @@ var CAMPOS_CARD  = [
   {"key": "MOTORISTA",               "label": "Motorista",                    "type": "text",       "section": "Transporte"},
   {"key": "TELEFONE MOTORISTA",      "label": "Tel. Motorista",               "type": "tel",        "section": "Transporte"},
   /* ── Financeiro ── */
-  {"key": "FRETE CLIENTE",           "label": "Frete Cliente (R$)",           "type": "text",       "section": "Financeiro"},
-  {"key": "FRETE MOTORISTA",         "label": "Frete Motorista (R$)",         "type": "text",       "section": "Financeiro"},
-  {"key": "CUSTO TOTAL OPERACIONAL", "label": "Custo Total Operacional (R$)", "type": "text",       "section": "Financeiro"},
+  {"key": "FRETE COBRADO",           "label": "Frete Cliente (R$)",           "type": "text",       "section": "Financeiro"},
+  {"key": "FRETE PAGO",              "label": "Frete Motorista (R$)",         "type": "text",       "section": "Financeiro"},
+  {"key": "CUSTO OPERACIONAL TOTAL", "label": "Custo Total Operacional (R$)", "type": "text",       "section": "Financeiro"},
   {"key": "ADIANTAMENTO",            "label": "Adiantamento (%)",             "type": "percent",    "section": "Financeiro"},
   {"key": "GERENCIAMENTO",           "label": "Gerenciamento",                "type": "text",       "section": "Financeiro"},
-  {"key": "CTE",                     "label": "CTE",                          "type": "text",       "section": "Financeiro"},
-  {"key": "NF",                      "label": "NF",                           "type": "text",       "section": "Financeiro"},
+  {"key": "CTE",                     "label": "CTE",                          "type": "text",       "section": "Fiscal"},
+  {"key": "MDF",                     "label": "MDF",                          "type": "text",       "section": "Fiscal"},
+  {"key": "NF",                      "label": "NF",                           "type": "text",       "section": "Fiscal"},
+  {"key": "VALE PEDAGIO",            "label": "Vale Pedágio",                 "type": "text",       "section": "Fiscal"},
   /* ── Pagamento ── */
   {"key": "TITULAR DA CONTA",        "label": "Titular da Conta",             "type": "text",       "section": "Pagamento"},
   {"key": "TIPO CHAVE PIX",          "label": "Tipo de Chave PIX",            "type": "select-pix", "section": "Pagamento"},
@@ -446,14 +529,113 @@ var cardAttachments = []; // anexos do card em edição
 
 document.addEventListener('DOMContentLoaded', function() {
   var raw = sessionStorage.getItem('barretos_user') || localStorage.getItem('barretos_user');
-  if (!raw) { window.location.href = 'mobile_login.html'; return; }
+  if (!raw || !getAuthToken()) { window.location.href = 'mobile_login.html'; return; }
   try { user = JSON.parse(raw); } catch(e) { window.location.href = 'mobile_login.html'; return; }
   document.getElementById('top-user').textContent = (user.nome||'').split(' ')[0].toUpperCase();
   var sideName = document.getElementById('sidebar-user-name');
   if (sideName) sideName.textContent = user.nome || '';
+  if (localStorage.getItem('barretos_deve_trocar_senha') === '1') {
+    document.getElementById('troca-senha-overlay').style.display = 'flex';
+  }
   initPullToRefresh();
   fetchPermissoes();
+  registrarServiceWorkerEAtualizarBotaoPush_();
 });
+
+/* ── Troca de senha obrigatória (senha temporária/padrão) ── */
+async function salvarTrocaSenhaObrigatoria() {
+  var senha  = document.getElementById('ts-senha').value;
+  var senha2 = document.getElementById('ts-senha2').value;
+  var msg    = document.getElementById('ts-msg');
+  msg.textContent = '';
+  if (!senha || senha.length < 8) { msg.textContent = 'A senha precisa ter pelo menos 8 caracteres.'; return; }
+  if (senha !== senha2) { msg.textContent = 'As senhas não conferem.'; return; }
+  var btn = document.getElementById('ts-btn');
+  btn.disabled = true; btn.textContent = 'Salvando…';
+  try {
+    var res = await fetch(SUPABASE_URL + '/auth/v1/user', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + getAuthToken() },
+      body: JSON.stringify({ password: senha }),
+    });
+    if (!res.ok) {
+      var j = await res.json().catch(function(){ return {}; });
+      msg.textContent = j.msg || j.error_description || 'Erro ao trocar a senha.';
+      btn.disabled = false; btn.textContent = 'Salvar e continuar';
+      return;
+    }
+    await apiFetch(API_BASE + '/usuarios/me/senha-trocada', { method: 'PUT' }).catch(function(){});
+    localStorage.removeItem('barretos_deve_trocar_senha');
+    document.getElementById('troca-senha-overlay').style.display = 'none';
+  } catch(e) {
+    msg.textContent = 'Erro de conexão.';
+    btn.disabled = false; btn.textContent = 'Salvar e continuar';
+  }
+}
+
+/* ── Notificações Push ──────────────────────────────────────────────
+   Funciona mesmo com o app fechado ou a tela bloqueada — diferente do
+   alerta antigo (que só existia enquanto a aba estava aberta). O
+   Service Worker (sw.js) é quem recebe o push de verdade; aqui só
+   pedimos a permissão e mandamos a inscrição pro backend guardar. */
+function urlBase64ParaUint8Array_(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = atob(base64);
+  var outputArray = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function registrarServiceWorkerEAtualizarBotaoPush_() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    var btn = document.getElementById('btn-ativar-push');
+    if (btn) btn.style.display = 'none'; // navegador não suporta (ex: Safari fora do modo "adicionado à tela")
+    return;
+  }
+  try {
+    var reg = await navigator.serviceWorker.register('sw.js');
+    var sub = await reg.pushManager.getSubscription();
+    var txt = document.getElementById('txt-ativar-push');
+    if (sub && txt) txt.textContent = 'Notificações ativadas ✓';
+  } catch (e) {}
+}
+
+async function ativarNotificacoes() {
+  var txt = document.getElementById('txt-ativar-push');
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      alert('Esse navegador não suporta notificações. No iPhone, é preciso primeiro "Adicionar à Tela de Início" antes de ativar.');
+      return;
+    }
+    var permissao = await Notification.requestPermission();
+    if (permissao !== 'granted') { alert('Permissão de notificação negada.'); return; }
+
+    var reg = await navigator.serviceWorker.ready;
+    var r = await apiFetch(API_BASE + '/push/vapid-public-key');
+    var j = await r.json();
+    if (!j.publicKey) { alert('Notificações ainda não configuradas no servidor.'); return; }
+
+    var sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ParaUint8Array_(j.publicKey),
+      });
+    }
+
+    await apiFetch(API_BASE + '/push/inscrever', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login: (user && user.login) || '', subscription: sub.toJSON() }),
+    });
+
+    if (txt) txt.textContent = 'Notificações ativadas ✓';
+    alert('Notificações ativadas! Você vai receber os alertas mesmo com o app fechado.');
+  } catch (e) {
+    alert('Não foi possível ativar as notificações: ' + e.message);
+  }
+}
 
 /* ── Pull to Refresh ── */
 function initPullToRefresh() {
@@ -659,11 +841,12 @@ function formatBytes(b) {
 
 
 
-async function fetchPermissoes() {
+function fetchPermissoes() {
+  // Permissões já vieram do banco no momento do login (mobile_login.html),
+  // salvas em barretos_permissoes — mesmo padrão do shell desktop.
   try {
-    var r = await fetch(URL_USUARIOS + '?action=get_permissoes_user&login=' + encodeURIComponent(user.login));
-    var j = await r.json();
-    if (j.success && j.ferramentas) allowedKeys = j.ferramentas;
+    var perms = JSON.parse(localStorage.getItem('barretos_permissoes') || '[]');
+    if (Array.isArray(perms) && perms.length) allowedKeys = perms;
   } catch(e) {}
   buildNav();
 }
@@ -805,14 +988,14 @@ function switchTab(key) {
     document.getElementById('top-sub').textContent = 'visão geral do dia';
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
-      '<iframe src="inicio.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+      '<iframe src="inicio.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="onFrameLoadMobile(this)"></iframe>';
   } else if (key === 'calendario') {
     document.documentElement.style.setProperty('--accent', '#F5B800');
     document.getElementById('top-title').textContent = 'Calendário';
     document.getElementById('top-sub').textContent = 'eventos e compromissos';
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
-      '<iframe src="calendario.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+      '<iframe src="calendario.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="onFrameLoadMobile(this)"></iframe>';
   } else if (aba) {
     document.documentElement.style.setProperty('--accent', aba.color);
     document.getElementById('top-title').textContent = aba.label;
@@ -825,35 +1008,35 @@ function switchTab(key) {
     document.getElementById('fab').style.display = 'none';
     _cotacaoSubTab = 'calc';
     document.getElementById('content').innerHTML =
-      '<iframe src="cotacao_comercial.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+      '<iframe src="cotacao_comercial.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="onFrameLoadMobile(this)"></iframe>';
   } else if (key === 'financeiro') {
     document.documentElement.style.setProperty('--accent', '#F5B800');
     document.getElementById('top-title').textContent = 'Financeiro';
     document.getElementById('top-sub').textContent = 'contas a pagar e a receber';
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
-      '<iframe src="financeiro.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+      '<iframe src="financeiro.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="onFrameLoadMobile(this)"></iframe>';
   } else if (key === 'conciliacao') {
     document.documentElement.style.setProperty('--accent', '#F5B800');
     document.getElementById('top-title').textContent = 'Conciliação Bancária';
     document.getElementById('top-sub').textContent = 'extratos, conciliação e DRE';
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
-      '<iframe src="conciliacao_bancaria_mobile.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+      '<iframe src="conciliacao_bancaria_mobile.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="onFrameLoadMobile(this)"></iframe>';
   } else if (key === 'faturamento') {
     document.documentElement.style.setProperty('--accent', '#F5B800');
     document.getElementById('top-title').textContent = 'Faturamento';
     document.getElementById('top-sub').textContent = 'por CT-e';
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
-      '<iframe src="faturamento.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+      '<iframe src="faturamento.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="onFrameLoadMobile(this)"></iframe>';
   } else if (key === 'frota') {
     document.documentElement.style.setProperty('--accent', '#F5B800');
     document.getElementById('top-title').textContent = 'Gestão da Frota';
     document.getElementById('top-sub').textContent = 'veículos, motoristas e despesas';
     document.getElementById('fab').style.display = 'none';
     document.getElementById('content').innerHTML =
-      '<iframe src="gestao_da_frota.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="setTimeout(function(){broadcastTemaMobile(localStorage.getItem(\'barretos_tema\')||\'escuro\')},250)"></iframe>';
+      '<iframe src="gestao_da_frota.html" style="width:100%;flex:1;border:none;height:100%" allow="clipboard-write" onload="onFrameLoadMobile(this)"></iframe>';
   }
 
   // Subnav da Cotação (Calculadora/Histórico/OC/Aprovação) só aparece
@@ -875,20 +1058,11 @@ async function renderKanban(key) {
   var aba = ABAS_CONFIG.find(function(a) { return a.key === key; });
   if (!aba) return;
   try {
-    var url = URL_KANBANS + '?aba=' + encodeURIComponent(aba.aba);
-    if(!verTodosCards) url += '&desde=' + dataLimiteISO_();
-    var j = await fetchComTentativas_(url);
-    if (j.success) {
-      // Normaliza nomes de colunas da planilha para o padrão do mobile
-      rawCards[key] = (j.rows || []).map(function(card) {
-        var normalizado = {};
-        Object.keys(card).forEach(function(colPlanilha) {
-          var chavePadrao = colPlanilhaParaPadrao(aba.aba, colPlanilha);
-          normalizado[chavePadrao] = card[colPlanilha];
-        });
-        return normalizado;
-      });
-      document.getElementById('top-sub').textContent = rawCards[key].length + ' cards' + (verTodosCards ? '' : ' (últ. 2 meses)');
+    var r = await apiFetch(API_BASE + '/kanban?empresa=' + encodeURIComponent(aba.aba));
+    var rows = await r.json();
+    if (r.ok) {
+      rawCards[key] = (rows || []).map(mapearDoApi_);
+      document.getElementById('top-sub').textContent = rawCards[key].length + ' cards';
     } else {
       document.getElementById('top-sub').textContent = 'erro ao carregar';
     }
@@ -896,11 +1070,6 @@ async function renderKanban(key) {
     document.getElementById('top-sub').textContent = 'sem conexão';
   }
   paintKanban(key);
-}
-
-async function carregarTodosCardsMobile(){
-  verTodosCards = true;
-  await renderKanban(currentTab);
 }
 
 function paintKanban(key) {
@@ -923,25 +1092,6 @@ function paintKanban(key) {
   });
   sb.appendChild(si); sb.appendChild(sinp);
   content.appendChild(sb);
-
-  // "Ver mais antigos" — só aparece se o filtro dos últimos 2 meses ainda
-  // estiver ativo (depois de clicado, some — já carregou tudo).
-  if(!verTodosCards){
-    var barAntigos = document.createElement('div');
-    barAntigos.style.cssText = 'padding:0 12px 8px;';
-    var btnAntigos = document.createElement('button');
-    btnAntigos.id = 'btn-antigos-mobile';
-    btnAntigos.className = 'btn-attach';
-    btnAntigos.style.cssText = 'width:100%;justify-content:center;';
-    btnAntigos.innerHTML = '<i class="ti ti-history" style="font-size:14px"></i> Ver cards mais antigos que 2 meses';
-    btnAntigos.onclick = async function(){
-      btnAntigos.disabled = true;
-      btnAntigos.innerHTML = '<span class="spinner" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:6px"></span> Carregando...';
-      await carregarTodosCardsMobile();
-    };
-    barAntigos.appendChild(btnAntigos);
-    content.appendChild(barAntigos);
-  }
 
   // Column tabs container
   var ct = document.createElement('div'); ct.className = 'col-tabs'; ct.id = 'col-tabs';
@@ -1085,9 +1235,10 @@ function abrirNovo() {
   if (!rawCards[currentTab]) {
     var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
     if (aba) {
-      fetchComTentativas_(URL_KANBANS + '?aba=' + encodeURIComponent(aba.aba))
-        .then(function(j) {
-          if (j.success) rawCards[currentTab] = j.rows || [];
+      apiFetch(API_BASE + '/kanban?empresa=' + encodeURIComponent(aba.aba))
+        .then(function(r) { return r.json(); })
+        .then(function(rows) {
+          rawCards[currentTab] = (rows || []).map(mapearDoApi_);
           renderModalBody({});
           document.getElementById('modal-card').classList.add('open');
         })
@@ -1199,6 +1350,13 @@ function renderModalBody(data) {
         if ((data[f.key]||'') === o) opt.selected = true;
         inp.appendChild(opt);
       });
+    } else if (f.type === 'select-modalidade') {
+      inp = document.createElement('select'); inp.id = 'cf-' + f.key;
+      ['','Dedicado','Fracionado'].forEach(function(o) {
+        var opt = document.createElement('option'); opt.value = o; opt.textContent = o || '— selecione —';
+        if ((data[f.key]||'') === o) opt.selected = true;
+        inp.appendChild(opt);
+      });
     } else if (f.type === 'percent') {
       var pw = document.createElement('div');
       pw.style.cssText = 'display:flex;align-items:center;gap:6px;';
@@ -1237,7 +1395,7 @@ function renderModalBody(data) {
 function sectionIcon(s) {
   var m = {
     'Identificação':'tag','Operação':'clipboard-list','Rota':'route',
-    'Transporte':'truck','Financeiro':'currency-dollar','Pagamento':'qrcode','Obs':'notes'
+    'Transporte':'truck','Financeiro':'currency-dollar','Fiscal':'file-invoice','Pagamento':'qrcode','Obs':'notes'
   };
   return m[s] || 'circle';
 }
@@ -1275,38 +1433,24 @@ async function salvarCard() {
     if (el) dados[f.key] = el.value;
   });
 
-  // Campos padrão internos do mobile — o mapa traduz para o nome real de cada aba
-  var CAMPOS_PADRAO = [
-    "DT CODIGO","Resumo","Status","Responsável","VENDEDOR","CNPJ TOMADOR","CLIENTE",
-    "CONTATO CLIENTE","ACOMPANHAMENTO","CTE","NF","DATA DA COLETA",
-    "PREVISAO DA ENTREGA","CIDADE ORIGEM","UF ORIGEM","CIDADE DESTINO",
-    "UF DESTINO","FRETE CLIENTE","FRETE MOTORISTA","CUSTO TOTAL OPERACIONAL",
-    "ADIANTAMENTO","TIPO DE VEICULO","MOTORISTA","TELEFONE MOTORISTA",
-    "GERENCIAMENTO","DATA DA ENTREGA","TITULAR DA CONTA","TIPO CHAVE PIX",
-    "CHAVE PIX","BANCO","OBSERVACAO","TITULO"
-  ];
-
   var aba = ABAS_CONFIG.find(function(a) { return a.key === currentTab; });
-
-  // Traduz chaves padrão → nomes reais das colunas desta aba
-  var dadosTraduzidos = {};
-  CAMPOS_PADRAO.forEach(function(chavePadrao) {
-    if (dados[chavePadrao] === undefined) return;
-    var colReal = colPadraoParaPlanilha(aba.aba, chavePadrao);
-    dadosTraduzidos[colReal] = dados[chavePadrao];
-  });
-
-  var payload = editCard
-    ? {action:'update', aba:aba.aba, chave:editCard.card['DT CODIGO'], dados:dadosTraduzidos}
-    : {action:'create', aba:aba.aba, dados:dadosTraduzidos};
-
-  console.log('[salvarCard] payload:', JSON.stringify(payload));
+  var payloadApi = mapearParaApi_(dados);
 
   try {
-    var j = await fetchComTentativas_(URL_KANBANS, {method:'POST', body:JSON.stringify(payload)});
-    console.log('[salvarCard] resposta:', JSON.stringify(j));
-    if (j.success) { fecharModal(); await renderKanban(currentTab); }
-    else alert('Erro: ' + (j.error||'desconhecido'));
+    var r = editCard
+      ? await apiFetch(API_BASE + '/kanban/' + encodeURIComponent(aba.aba) + '/' + encodeURIComponent(editCard.card['DT CODIGO']), {
+          method: 'PUT',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(payloadApi),
+        })
+      : await apiFetch(API_BASE + '/kanban', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(Object.assign({empresa: aba.aba}, payloadApi)),
+        });
+    var j = await r.json();
+    if (r.ok) { fecharModal(); await renderKanban(currentTab); }
+    else alert('Erro: ' + (j.error || 'desconhecido'));
   } catch(e) { alert('Erro de conexão: ' + e.message); }
 
   btn.disabled = false;
@@ -1316,24 +1460,38 @@ async function salvarCard() {
 async function excluirCard() {
   if (!editCard || !confirm('Excluir este card?')) return;
   var aba = ABAS_CONFIG.find(function(a) { return a.key === editCard.key; });
-  // A chave enviada deve ser o VALOR do DT CODIGO (não o nome da coluna)
-  // O Apps Script busca pelo valor na coluna "Chave" ou "DT CODIGO"
   var chaveValor = editCard.card['DT CODIGO'];
   try {
-    var j = await fetchComTentativas_(URL_KANBANS, {method:'POST',
-      body:JSON.stringify({action:'delete', aba:aba.aba, chave:chaveValor})});
-    if (j.success) { fecharModal(); await renderKanban(currentTab); }
-    else alert('Erro: ' + j.error);
+    var r = await apiFetch(API_BASE + '/kanban/' + encodeURIComponent(aba.aba) + '/' + encodeURIComponent(chaveValor), {method: 'DELETE'});
+    if (r.ok) { fecharModal(); await renderKanban(currentTab); }
+    else { var j = await r.json().catch(function(){return {};}); alert('Erro: ' + (j.error||'desconhecido')); }
   } catch(e) { alert('Erro de conexão.'); }
 }
 
 function logout() {
   if (!confirm('Encerrar sessão?')) return;
-  ['barretos_user','barretos_nome','barretos_perfil','barretos_login'].forEach(function(k) {
+  executarLogout_();
+}
+
+function executarLogout_() {
+  ['barretos_user','barretos_nome','barretos_perfil','barretos_login','barretos_permissoes','barretos_auth_token','barretos_auth_refresh','barretos_deve_trocar_senha'].forEach(function(k) {
     sessionStorage.removeItem(k); localStorage.removeItem(k);
   });
   window.location.href = 'mobile_login.html';
 }
+
+/* ── Logout automático por inatividade (1h) ──
+   Não afeta as notificações push: elas dependem só do Service Worker e
+   da inscrição salva no banco, nada disso é tocado aqui. Só conta
+   atividade no shell mobile (menu, toque, teclado, rolagem) — não
+   enxerga o que acontece dentro do iframe de cada módulo aberto. */
+var _ultimaAtividadeMobile = Date.now();
+['click','keydown','touchstart','scroll'].forEach(function(evento) {
+  document.addEventListener(evento, function() { _ultimaAtividadeMobile = Date.now(); }, { passive: true, capture: true });
+});
+setInterval(function() {
+  if (Date.now() - _ultimaAtividadeMobile > 60 * 60 * 1000) executarLogout_();
+}, 60 * 1000);
 
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');

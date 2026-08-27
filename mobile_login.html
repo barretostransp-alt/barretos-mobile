@@ -64,27 +64,19 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:'DM Sans
 </div>
 
 <script>
-// ── URLs hardcoded — zero configuração necessária
-var URLS = {
-  usuarios: 'https://script.google.com/macros/s/AKfycbyYMOKvOInjNNHjQGlW5k8mGJ6ydl2NKfOr3HRWKrpFXARXxYSsb-vJF5t71yYG_6k69A/exec',
-  kanbans:  'https://script.google.com/macros/s/AKfycbwkX0XLYMnWIKa9SsS1oSv9E2hhGYjKi5Fp2cPHA_J_X1jg7NiGVT4YfdFAjZ3Ps2C4Qg/exec',
-  relatorio:'https://script.google.com/macros/s/AKfycbx0b9geJN-50h8vQPMyAw5rAD5h4ghOFJrngeCgs29t3sqpaCGGC_b2ih99eYYnZdSDfg/exec',
-  cotacao:  'https://script.google.com/macros/s/AKfycbza9DkwnUwCDSZImGeoLLvJJeJhXVYryWv0WyBIxwbb9Ampih8_QYghTWKlBMfORq7V/exec'
-};
+/* ══════════════════════════════
+   CONFIG — Supabase Auth (mesmo backend do desktop)
+══════════════════════════════ */
+var SUPABASE_URL = 'https://qjwobkpgqmaqisphwonl.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_c4MrJXB6nTHY0a5ShAFRaQ_Jc4qDdPr';
 
-// Salva todas as URLs no localStorage ao carregar
-function seedUrls() {
-  localStorage.setItem('login_webapp_url',       URLS.usuarios);
-  localStorage.setItem('barretos_usuarios_url',  URLS.usuarios);
-  localStorage.setItem('barretos_jira_url',      URLS.kanbans);
-  localStorage.setItem('jira_url_PINHEIRO',      URLS.kanbans);
-  localStorage.setItem('jira_url_INFRA',         URLS.kanbans);
-  localStorage.setItem('jira_url_BARRETOS',      URLS.kanbans);
-  localStorage.setItem('jira_url_GONCALVES',     URLS.kanbans);
-  localStorage.setItem('barretos_relatorio_url', URLS.relatorio);
-  localStorage.setItem('relatorio_webapp_url',   URLS.relatorio);
-  localStorage.setItem('barretos_cotacao_url',   URLS.cotacao);
-  localStorage.setItem('sheets_webapp_url',      URLS.cotacao);
+function loginParaEmail(login) {
+  if (login.indexOf('@') !== -1) return login;
+  var normalizado = login.toLowerCase().trim()
+    .normalize('NFD').replace(new RegExp('[̀-ͯ]', 'g'), '')
+    .replace(/\s+/g, '.')
+    .replace(/[^a-z0-9.]/g, '');
+  return normalizado + '@barretos.sistema';
 }
 
 function setMsg(txt, ok) {
@@ -98,54 +90,77 @@ document.getElementById('inp-senha').addEventListener('keydown', function(e) {
 });
 
 async function doLogin() {
-  var login = document.getElementById('inp-login').value.trim();
+  var digitado = document.getElementById('inp-login').value.trim();
   var senha = document.getElementById('inp-senha').value;
-  if (!login || !senha) { setMsg('Preencha login e senha.'); return; }
+  if (!digitado || !senha) { setMsg('Preencha login e senha.'); return; }
   var btn = document.getElementById('btn-login');
   btn.innerHTML = '<span class="spinner"></span>Entrando…';
   btn.disabled = true;
   setMsg('');
-  seedUrls();
   try {
-    var r = await fetch(URLS.usuarios + '?action=login&login=' + encodeURIComponent(login) + '&senha=' + encodeURIComponent(senha));
+    var r = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+      body: JSON.stringify({ email: loginParaEmail(digitado), password: senha }),
+    });
     var j = await r.json();
-    if (j.success && j.user) {
-      // Salva sessão
-      sessionStorage.setItem('barretos_user',   JSON.stringify(j.user));
-      sessionStorage.setItem('barretos_nome',   j.user.nome);
-      sessionStorage.setItem('barretos_perfil', j.user.perfil);
-      sessionStorage.setItem('barretos_login',  j.user.login);
-      localStorage.setItem('barretos_user',   JSON.stringify(j.user));
-      localStorage.setItem('barretos_nome',   j.user.nome);
-      localStorage.setItem('barretos_perfil', j.user.perfil);
-      localStorage.setItem('barretos_login',  j.user.login);
-      // Busca URLs e permissões do servidor
-      try {
-        var ru = await fetch(URLS.usuarios + '?action=get_urls');
-        var ju = await ru.json();
-        if (ju.success && ju.urls) {
-          Object.keys(ju.urls).forEach(function(k) { if(ju.urls[k]) localStorage.setItem(k, ju.urls[k]); });
-        }
-      } catch(e) {}
-      setMsg('Bem-vindo, ' + j.user.nome + '!', true);
+    if (r.ok && j.access_token) {
+      var pr = await fetch(
+        SUPABASE_URL + '/rest/v1/usuarios?select=nome,login,perfil,deve_trocar_senha,permissoes(ferramentas)&auth_user_id=eq.' + j.user.id,
+        { headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + j.access_token } }
+      );
+      var linhas = await pr.json();
+      var perfilRow = Array.isArray(linhas) ? linhas[0] : null;
+      var permRel = perfilRow && perfilRow.permissoes;
+      var ferramentas = Array.isArray(permRel) ? (permRel[0] && permRel[0].ferramentas) || [] : (permRel && permRel.ferramentas) || [];
+      var user = {
+        nome:   (perfilRow && perfilRow.nome)   || digitado,
+        perfil: (perfilRow && perfilRow.perfil) || 'colaborador',
+        login:  (perfilRow && perfilRow.login)  || digitado,
+      };
+      sessionStorage.setItem('barretos_user', JSON.stringify(user));
+      localStorage.setItem('barretos_user',   JSON.stringify(user));
+      localStorage.setItem('barretos_nome',   user.nome);
+      localStorage.setItem('barretos_perfil', user.perfil);
+      localStorage.setItem('barretos_login',  user.login);
+      localStorage.setItem('barretos_permissoes', JSON.stringify(ferramentas));
+      localStorage.setItem('barretos_auth_token',   j.access_token);
+      localStorage.setItem('barretos_auth_refresh', j.refresh_token);
+      localStorage.setItem('barretos_deve_trocar_senha', (perfilRow && perfilRow.deve_trocar_senha) ? '1' : '');
+      setMsg('Bem-vindo, ' + user.nome + '!', true);
       setTimeout(function() { window.location.href = 'mobile.html'; }, 600);
     } else {
-      setMsg(j.error || 'Login ou senha incorretos.');
+      setMsg(j.error_description || j.msg || 'Login ou senha incorretos.');
       btn.innerHTML = 'Entrar';
       btn.disabled = false;
     }
   } catch(e) {
-    setMsg('Erro de conexão. Tente novamente.');
+    setMsg('Erro de conexão com o Supabase.');
     btn.innerHTML = 'Entrar';
     btn.disabled = false;
   }
 }
 
-// Se já logado, vai direto para o app
+// Se já logado, vai direto para o app. Importante: exige token válido, não
+// só o objeto de usuário — os sites do GitHub Pages (ambiente-de-teste,
+// barretos-mobile-teste, produção) ficam todos sob o mesmo domínio
+// barretostransp-alt.github.io e por isso COMPARTILHAM o mesmo
+// localStorage. Um login antigo (sistema anterior, sem token) podia
+// deixar "barretos_user" salvo sem "barretos_auth_token" — e sem essa
+// checagem, essa tela mandava pro mobile.html, que mandava de volta pra
+// cá (sem token), formando um loop infinito de redirecionamento (a tela
+// "piscando" e travando o toque).
 document.addEventListener('DOMContentLoaded', function() {
-  seedUrls();
   var raw = sessionStorage.getItem('barretos_user') || localStorage.getItem('barretos_user');
-  if (raw) { try { var u = JSON.parse(raw); if(u && u.login) window.location.href = 'mobile.html'; } catch(e) {} }
+  var token = localStorage.getItem('barretos_auth_token');
+  if (raw && token) {
+    try { var u = JSON.parse(raw); if (u && u.login) { window.location.href = 'mobile.html'; return; } } catch(e) {}
+  }
+  // Sessão incompleta/antiga (de outro sistema no mesmo domínio) — limpa
+  // pra não confundir a próxima tentativa de login.
+  ['barretos_user','barretos_nome','barretos_perfil','barretos_login','barretos_permissoes','barretos_auth_token','barretos_auth_refresh'].forEach(function(k) {
+    sessionStorage.removeItem(k); localStorage.removeItem(k);
+  });
 });
 </script>
 </body>
